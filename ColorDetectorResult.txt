@@ -1,0 +1,160 @@
+label-1_3-explosive.png
+Top: orange
+Bottom: orange
+
+label-1_4-explosive.png
+Top: orange
+Bottom: orange
+
+label-1_5-blasting-agent.png
+Top: orange
+Bottom: orange
+
+label-1_6-explosive.png
+Top: orange
+Bottom: orange
+
+label-1-explosive-subsidiary.png
+Top: orange
+Bottom: orange
+
+label-2-flammable-gas.png
+Top: red
+Bottom: red
+
+label-2-non-flammable-gas.png
+Top: red
+Bottom: red
+
+label-2-poison-gas.png
+Top: red
+Bottom: red
+
+label-3-flammable-liquid.png
+Top: red
+Bottom: red
+
+label-4-dangerous-when-wet.png
+Top: blue
+Bottom: blue
+
+label-4-spontaneously-combustible.png
+Top: red
+Bottom: red
+
+label-5_1-oxidizer.png
+Top: yellow
+Bottom: yellow
+
+label-5_2-organic-peroxide.png
+Top: red
+Bottom: yellow
+
+label-6-poison-inhalation-hazard.png
+Top: red
+Bottom: red
+
+label-6-poison.png
+Top: red
+Bottom: red
+
+label-7-radioactive-iii.png
+Top: yellow
+Bottom: red
+
+label-7-radioactive-ii.png
+Top: yellow
+Bottom: red
+
+label-7-radioactive-i.png
+Top: red
+Bottom: red
+
+label-8-corrosive.png
+Top: red
+Bottom: red
+
+placard-1_4-explosives.png
+Top: orange
+Bottom: orange
+
+placard-1_5-blasting-agents.png
+Top: orange
+Bottom: orange
+
+placard-1_6-explosives.png
+Top: orange
+Bottom: orange
+
+placard-2-flammable-gas.png
+Top: red
+Bottom: red
+
+placard-2-inhalation-hazard.png
+Top: red
+Bottom: red
+
+placard-2-non-flammable-gas.png
+Top: red
+Bottom: red
+
+placard-2-oxygen.png
+Top: yellow
+Bottom: yellow
+
+placard-3-combustible.png
+Top: red
+Bottom: red
+
+placard-3-flammable.png
+Top: red
+Bottom: red
+
+placard-3-fuel-oil.png
+Top: red
+Bottom: red
+
+placard-3-gasoline.png
+Top: red
+Bottom: red
+
+placard-4-dangerous-when-wet.png
+Top: blue
+Bottom: blue
+
+placard-4-spontaneously-combustible.png
+Top: red
+Bottom: red
+
+placard-5_1-oxidizer.png
+Top: yellow
+Bottom: yellow
+
+placard-5_2-organic-peroxide.png
+Top: red
+Bottom: yellow
+
+placard-6-inhalation-hazard.png
+Top: red
+Bottom: red
+
+placard-6-poison.png
+Top: red
+Bottom: red
+
+placard-6-toxic.png
+Top: red
+Bottom: red
+
+placard-7-radioactive.png
+Top: yellow
+Bottom: red
+
+placard-8-corrosive-notext.png
+Top: red
+Bottom: red
+
+placard-8-corrosive.png
+Top: red
+Bottom: red
+
