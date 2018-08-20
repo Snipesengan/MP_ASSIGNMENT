@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 class ColorDetector:
 
     #Create a HSV boundary for different color
-    thresh_dict   = [
+    threshHolds   = [
                      ('blue',(np.array([98,109,20]),np.array([112,255,255]))),
                      ('green',(np.array([36,0,0]),np.array([70,255,255]))),
                      ('yellow',(np.array([20,190,20]),np.array([30,255,255]))),
@@ -34,7 +34,7 @@ class ColorDetector:
         img = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
 
         count = np.zeros((2))
-        for color in self.thresh_dict:
+        for color in self.threshHolds:
 
             #Iterate throught the thresh hold dict
             mask = cv2.inRange(img,color[1][0],color[1][1])
@@ -44,7 +44,7 @@ class ColorDetector:
 
         count = count[0:-1]
 
-        return self.thresh_dict[len(self.thresh_dict) - np.argmax(count[:,-1]) - 1][0]
+        return self.threshHolds[len(self.threshHolds) - np.argmax(count[:,-1]) - 1][0]
 
 
     def detectShape(self,img):
