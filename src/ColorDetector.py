@@ -42,7 +42,7 @@ class ColorDetector:
             #Count how many colors there are
             count = np.vstack((binCount[[0,-1]],count))
 
-        count = count[0:-1]
+        count = count[0:-1] #Remove the top row which contains nothingm nb
 
         return self.threshHolds[len(self.threshHolds) - np.argmax(count[:,-1]) - 1][0]
 
