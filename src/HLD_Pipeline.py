@@ -25,6 +25,7 @@ def find_region_of_interest(imgBGR,display=False):
     box = cv2.boxPoints(rect)
     box = np.int0(box)
     mask = cv2.drawContours(black,[box],0,255,thickness=-1)
+
     if display:
         roi = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
         roi = cv2.cvtColor(roi,cv2.COLOR_BGR2RGB)
@@ -32,13 +33,12 @@ def find_region_of_interest(imgBGR,display=False):
         plt.imshow(roi)
         plt.show()
 
-    return mask
+    return mask,roi
 
 if __name__ == '__main__':
     if(len(sys.argv) != 2):
         print("Usage -- python {script} <image_path>".format(script=sys.argv[0]))
     else:
         imgBGR = cv2.imread(sys.argv[1])
-        mask = find_region_of_interest(imgBGR,True)
-        colorpercentage = imghelp.calculate_color_percentage(imgBGR,mask)
-        print(colorpercentage)
+        mask,roi = find_region_of_interest(imgBGR,True)
+        colormap = imghelp.calculate_color_percentage(imgBGR,mask,True)

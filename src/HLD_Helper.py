@@ -6,10 +6,18 @@ import tkinter
 import matplotlib.pyplot as plt
 import sys
 
+COLOR_BLUE_LOWER, COLOR_BLUE_UPPER     = np.array([98,109,20]),np.array([112,255,255])
+COLOR_GREEN_LOWER, COLOR_GREEN_UPPER   = np.array([36,0,0]),np.array([75,255,255])
+COLOR_YELLOW_LOWER, COLOR_YELLOW_UPPER = np.array([20,190,20]),np.array([30,255,255])
+COLOR_ORANGE_LOWER, COLOR_ORANGE_UPPER = np.array([5,50,50]),np.array([15,255,255])
+COLOR_RED1_LOWER, COLOR_RED1_UPPER     = np.array([0,70,50]),np.array([10,255,255])
+COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,70,50]),np.array([180,255,255])
+COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,15])
+COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,255])
+
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
 #that thresholds can be set easier this way..
-
 def find_rectangles(imgBGR,mask=None,display=False):
 
     rects = []
@@ -40,60 +48,61 @@ def find_rectangles(imgBGR,mask=None,display=False):
     rects.sort(key = lambda x: cv2.contourArea(x),reverse=True)
 
     if display:
+        plt.figure("Canny")
+        plt.imshow(canny,cmap='gray')
         plt.figure("find_rectangles")
         plt.imshow(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
         plt.show()
 
+
     return rects
 
-def calculate_color_percentage(imgBGR,mask=None):
-    """Defines thresholds for colors in HSV color space"""
-
-    #For now these are color we expect our hazmat label to have
-    COLOR_BLUE   = ('blue',(98,109),(112,256))
-    COLOR_GREEN  = ('green',(36,0),(74,256))
-    COLOR_ORANGE = ('orange',(10,50),(15,256))
-    COLOR_YELLOW = ('yellow',(20,190),(30,256))
-    COLOR_RED1   = ('red',(0,70),(10,256))
-    COLOR_RED2   = ('red',(170,70),(180,256))
-    COLOR_WHITE  = ('white',(0,0),(180,10))
-
-    COLOR_LIST   = [COLOR_BLUE,COLOR_GREEN,COLOR_ORANGE,COLOR_YELLOW,COLOR_RED1,COLOR_RED2]
-
-    #A dictionary containing color as key and percentage of that color in the image as value
-    colorpercentage = {}
-
-    histnorm = _compute_2d_histgoram(imgBGR,mask)
-
-    for c in COLOR_LIST:
-        #Calculate the percentage of each color in COLOR_LIST
-        #by segmenting their respective (h,s) channel range in the 2d histogram
-        colorpercentage[c[0]] = np.sum(histnorm[c[1][0]:c[2][0],c[1][1]:c[2][1]])
+def calculate_color_percentage(imgBGR,mask=None,display=False):
 
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
+    colormap = {}
 
-    #Black and white detection are done seperately because they require
-    #the V channel...
-    #1.First a mask is calculated using cv.inRange() - which checks
-    #   if the image is in the specify range for however many channels
-    #2.Count how many non-zeros in the mask which represents hits
+    colormap['blue']   = _calculate_percent(imgHSV,COLOR_BLUE_LOWER,COLOR_BLUE_UPPER,mask)
+    colormap['green']  = _calculate_percent(imgHSV,COLOR_GREEN_LOWER,COLOR_GREEN_UPPER,mask)
+    colormap['yellow'] = _calculate_percent(imgHSV,COLOR_YELLOW_LOWER,COLOR_YELLOW_UPPER,mask)
+    colormap['orange'] = _calculate_percent(imgHSV,COLOR_ORANGE_LOWER,COLOR_ORANGE_UPPER,mask)
+    colormap['black']  = _calculate_percent(imgHSV,COLOR_BLACK_LOWER,COLOR_BLACK_UPPER,mask)
+    colormap['white']  = _calculate_percent(imgHSV,COLOR_WHITE_LOWER,COLOR_WHITE_UPPER,mask)
 
-    #Detecting black
-    black  = cv2.inRange(imgHSV,np.array([0,0,0]),np.array([180,255,0]))
-    black  = np.bitwise_and(black,mask)
-    count = (black != 0).sum()
-    colorpercentage['black'] = count/float((mask != 0).sum())
+    red1 = _calculate_percent(imgHSV,COLOR_RED1_LOWER,COLOR_RED1_UPPER,mask)
+    red2 = _calculate_percent(imgHSV,COLOR_RED2_LOWER,COLOR_RED2_UPPER,mask)
+    red_mask  = np.clip(red1[1] + red2[1],0,255)
+    red_percent = red1[0] + red2[0]
 
-    #Detecting white
-    white  = cv2.inRange(imgHSV,np.array([0,0,200]),np.array([180,70,255]))
-    white = np.bitwise_and(white,mask)
-    count = (white != 0).sum()
-    colorpercentage['white'] = count/float((mask != 0).sum())
+    colormap['red'] = red_percent,red_mask
 
-    #Find out how much total percentage
-    colorpercentage['total'] = sum(colorpercentage.values())
+    #Sort the colors cuz why not
+    sortcolor = list(colormap.keys())
+    sortcolor.sort(key = lambda x: colormap[x][0],reverse=True)
+    sortedmap = {key: colormap[key] for key in sortcolor}
 
-    return colorpercentage
+    if display:
+        color,v = list(sortedmap.items())[0]
+        color_mask = v[1]
+        img = cv2.bitwise_and(imgBGR,imgBGR,mask=color_mask)
+        plt.figure("Dominant Color: " + color)
+        plt.imshow(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
+        plt.show()
+
+    return sortedmap
+
+def _calculate_percent(imgHSV,lower,upper,mask=None):
+
+    if mask.any != None:
+        pixel_count = (mask != 0).sum()
+    else:
+        pixel_count = imgHSV.shape[0] * imgHSV.shape[1]
+
+    color = cv2.inRange(imgHSV,lower,upper)
+    color = cv2.bitwise_and(color,color,mask=mask)
+    color_count = (color != 0).sum()
+
+    return (float(color_count)/pixel_count, color)
 
 #Imports a img in BGR color space
 def _compute_2d_histgoram(imgBGR,mask=None):
@@ -112,7 +121,6 @@ def _compute_2d_histgoram(imgBGR,mask=None):
     #percentage in teh original image
     histnorm = hist.astype(float)/np.sum(hist)
     return histnorm
-
 
 #Pseudo test Harness
 if __name__ == '__main__':
