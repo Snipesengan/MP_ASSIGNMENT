@@ -35,6 +35,12 @@ def find_region_of_interest(imgBGR,display=False):
 
     return mask,roi
 
+#Imports a region of interest and
+def identify_text(roiBGR,display=False):
+    
+
+
+
 if __name__ == '__main__':
     if(len(sys.argv) != 2):
         print("Usage -- python {script} <image_path>".format(script=sys.argv[0]))

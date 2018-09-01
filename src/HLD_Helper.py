@@ -15,6 +15,14 @@ COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,70,50]),np.array([180,255
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,15])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,255])
 
+
+
+
+#Takes in a region of interest in of the image
+def localize_text_in_image(roiBGR,display=False):
+    #Ok how do we do this lmao
+
+
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
 #that thresholds can be set easier this way..
@@ -62,6 +70,7 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
     colormap = {}
 
+    #Calculate percentage of each color
     colormap['blue']   = _calculate_percent(imgHSV,COLOR_BLUE_LOWER,COLOR_BLUE_UPPER,mask)
     colormap['green']  = _calculate_percent(imgHSV,COLOR_GREEN_LOWER,COLOR_GREEN_UPPER,mask)
     colormap['yellow'] = _calculate_percent(imgHSV,COLOR_YELLOW_LOWER,COLOR_YELLOW_UPPER,mask)
@@ -69,6 +78,7 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     colormap['black']  = _calculate_percent(imgHSV,COLOR_BLACK_LOWER,COLOR_BLACK_UPPER,mask)
     colormap['white']  = _calculate_percent(imgHSV,COLOR_WHITE_LOWER,COLOR_WHITE_UPPER,mask)
 
+    #For red, since there are two thresholds - need to added them together
     red1 = _calculate_percent(imgHSV,COLOR_RED1_LOWER,COLOR_RED1_UPPER,mask)
     red2 = _calculate_percent(imgHSV,COLOR_RED2_LOWER,COLOR_RED2_UPPER,mask)
     red_mask  = np.clip(red1[1] + red2[1],0,255)
@@ -81,6 +91,7 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     sortcolor.sort(key = lambda x: colormap[x][0],reverse=True)
     sortedmap = {key: colormap[key] for key in sortcolor}
 
+    #Display the most dominant color
     if display:
         color,v = list(sortedmap.items())[0]
         color_mask = v[1]
@@ -89,8 +100,9 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
         plt.imshow(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
         plt.show()
 
-    return sortedmap
+    return sortedmap #key: color, value: (colorpercentage,colormask)
 
+#Calculate the percentage of that color and its mask
 def _calculate_percent(imgHSV,lower,upper,mask=None):
 
     if mask.any != None:
@@ -121,12 +133,3 @@ def _compute_2d_histgoram(imgBGR,mask=None):
     #percentage in teh original image
     histnorm = hist.astype(float)/np.sum(hist)
     return histnorm
-
-#Pseudo test Harness
-if __name__ == '__main__':
-    if(len(sys.argv) != 2):
-        print("Usage -- python {script} <image_path>".format(script=sys.argv[0]))
-    else:
-        imgBGR = cv2.imread(sys.argv[1])
-        hist = _compute_2d_histgoram(imgBGR)
-        print(calculate_color_percentage(imgBGR))
