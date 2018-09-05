@@ -15,55 +15,82 @@ COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,70,50]),np.array([180,255
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,15])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,255])
 
-
-
+LETTER_TO_SIGN_RATIO = 0.005
 
 #Takes in a region of interest in of the image
-def localize_text_in_image(roiBGR,display=False):
+def localize_text_in_image(imgBGR,mask,display=False):
+
     #Ok how do we do this lmao
 
+    #Do some knowledge engineering and figure out where in the image that there shouldn't be any
+    #text
+
+    #Ok lets first find the MSER of the img masked
+
+    regions = _find_MSER(imgBGR,mask,display)
+
+    #With the regions lets filter out based on area... we will see if this works
+
+    hulls = []
+
+    imgArea = float((mask != 0).sum())
+    for r in regions:
+        area = cv2.contourArea(r)
+        perimeter = cv2.arcLength(r,True)
+        hull = cv2.convexHull(r.reshape(-1,1,2))
+
+        ratio = area/imgArea
+        print(ratio)
+        if ratio < LETTER_TO_SIGN_RATIO :
+            hulls.append(hull)
+
+    if display:
+        vis = imgBGR.copy()
+        cv2.polylines(vis,hulls,1,(0,255,0))
+        plt.figure("TEXT_REGION")
+        plt.imshow(cv2.cvtColor(vis,cv2.COLOR_BGR2RGB))
+        plt.show()
+
+    return hulls
 
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
 #that thresholds can be set easier this way..
-def find_rectangles(imgBGR,mask=None,display=False):
-
+def filter_rectangles(contours):
     rects = []
 
-    if(mask != None):
-        imgray = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
-
-    #Find the contours in the image
-    imgray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(imgray,(5,5),1)
-    canny = cv2.Canny(blurred,100,200)
-    #Perform some morphology on canny to make edge bigger
-    dilate = cv2.dilate(canny,cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)))
-    res,contours,hierachy = cv2.findContours(dilate,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
     #Filter out rectangles in the contours
-    img = imgBGR.copy()
     for c in contours:
         peri = cv2.arcLength(c,True)
         approx = cv2.approxPolyDP(c,0.04*peri,True)
 
         if len(approx) == 4:
-            cv2.drawContours(img,[c],-1,(0,255,0),2)
             rects.append(c)
-            area = cv2.contourArea(c)
+            area = cv2.contourArea(c) #TO DO
+            # More filtering can be done with the area...
 
     #Sort the rects based on area, largest area first
     rects.sort(key = lambda x: cv2.contourArea(x),reverse=True)
 
-    if display:
-        plt.figure("Canny")
-        plt.imshow(canny,cmap='gray')
-        plt.figure("find_rectangles")
-        plt.imshow(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
-        plt.show()
-
-
     return rects
+
+def find_contours(imgray,mask=None):
+
+    imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
+    blurred = cv2.GaussianBlur(imgray,(5,5),1)
+    canny = cv2.Canny(blurred,100,200)
+    dilate = cv2.dilate(canny,cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)))
+    res,contours,hierachy = cv2.findContours(dilate,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+    #For displaying stuff
+    vis = imgray.copy() & 0
+    cv2.drawContours(vis,contours,-1,255)
+
+    plt.figure("find_contours")
+    plt.imshow(np.hstack((imgray,blurred,canny,dilate,vis)),cmap='gray')
+
+    return res,contours,hierachy
+
 
 def calculate_color_percentage(imgBGR,mask=None,display=False):
 
@@ -102,6 +129,28 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
 
     return sortedmap #key: color, value: (colorpercentage,colormask)
 
+def remove_shadows(imgBGR):
+    pass
+
+
+def _find_MSER(imgBGR,mask=None,display=False):
+    mser = cv2.MSER_create()
+
+    imgBGR = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
+    gray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
+
+    regions, _ = mser.detectRegions(gray)
+
+    if display:
+        hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
+        vis = imgBGR.copy()
+        cv2.polylines(vis,hulls,1,(0,255,0))
+        plt.figure("MSER")
+        plt.imshow(cv2.cvtColor(vis,cv2.COLOR_BGR2RGB))
+        plt.show()
+
+    return regions
+
 #Calculate the percentage of that color and its mask
 def _calculate_percent(imgHSV,lower,upper,mask=None):
 
@@ -115,21 +164,3 @@ def _calculate_percent(imgHSV,lower,upper,mask=None):
     color_count = (color != 0).sum()
 
     return (float(color_count)/pixel_count, color)
-
-#Imports a img in BGR color space
-def _compute_2d_histgoram(imgBGR,mask=None):
-    hsv = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
-
-    #calcHist():
-    #   img      = input image, for this it should be converted to HSV
-    #   channels = [0,1], process both H and S plane
-    #   mask     = no mask yet.... will later when we figure out how to find region of interest
-    #   bins     = [180,256], 180 for H and 256 for S plane
-    #   range    = [0,180,0,256] ... self explanatory
-
-    hist = cv2.calcHist([hsv],[0,1],mask,[180,256],[0,180,0,256])
-
-    #now we need to normalize this hist value to be between 0 and 100 - representative of the
-    #percentage in teh original image
-    histnorm = hist.astype(float)/np.sum(hist)
-    return histnorm
