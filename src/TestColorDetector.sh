@@ -1,5 +1,7 @@
-for image in $(ls SampleData-20180826/20180826/SetD); do
+file="res/SetA"
+
+for image in $(ls $file); do
     echo $image
-    python3 src/HLD_Pipeline.py 'SampleData-20180826/20180826/SetD/'$image
+    python3 src/HLD_Pipeline.py $file'/'$image
     echo
 done

@@ -15,35 +15,6 @@ COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,70,50]),np.array([180,255
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,15])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,255])
 
-LETTER_TO_SIGN_RATIO = 0.005
-
-#Takes in a region of interest in of the image
-def localize_text_in_image(imgBGR,mask=None,display=False):
-    
-    regions = _find_MSER(imgBGR,mask,display)
-
-    #With the regions lets filter out based on area... we will see if this works
-
-    hulls = []
-
-    imgArea = float((mask != 0).sum())
-    for r in regions:
-        area = cv2.contourArea(r)
-        perimeter = cv2.arcLength(r,True)
-        hull = cv2.convexHull(r.reshape(-1,1,2))
-
-        ratio = area/imgArea
-        print(ratio)
-        if ratio < LETTER_TO_SIGN_RATIO :
-            hulls.append(hull)
-
-    if display:
-        vis = imgBGR.copy()
-        cv2.polylines(vis,hulls,1,(0,255,0))
-        plt.figure("TEXT_REGION")
-        plt.imshow(cv2.cvtColor(vis,cv2.COLOR_BGR2RGB))
-
-    return hulls
 
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
@@ -97,7 +68,6 @@ def find_contours(imgray,mask=None):
 
     return res,contours,hierachy
 
-
 def calculate_color_percentage(imgBGR,mask=None,display=False):
 
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
@@ -135,11 +105,8 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
 
     return sortedmap #key: color, value: (colorpercentage,colormask)
 
-def shadow_balancing(imgBGR):
-    pass
 
-
-def _find_MSER(imgBGR,mask=None,display=False):
+def find_MSER(imgBGR,mask=None,display=False):
     mser = cv2.MSER_create()
 
     imgBGR = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
@@ -150,10 +117,9 @@ def _find_MSER(imgBGR,mask=None,display=False):
     if display:
         hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
         vis = imgBGR.copy()
-        cv2.polylines(vis,hulls,1,(0,255,0))
+        cv2.polylines(vis,hulls,1,(0,255,0),thickness=3)
         plt.figure("MSER")
         plt.imshow(cv2.cvtColor(vis,cv2.COLOR_BGR2RGB))
-        plt.show()
 
     return regions
 
