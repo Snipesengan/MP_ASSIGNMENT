@@ -18,15 +18,8 @@ COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,25
 LETTER_TO_SIGN_RATIO = 0.005
 
 #Takes in a region of interest in of the image
-def localize_text_in_image(imgBGR,mask,display=False):
-
-    #Ok how do we do this lmao
-
-    #Do some knowledge engineering and figure out where in the image that there shouldn't be any
-    #text
-
-    #Ok lets first find the MSER of the img masked
-
+def localize_text_in_image(imgBGR,mask=None,display=False):
+    
     regions = _find_MSER(imgBGR,mask,display)
 
     #With the regions lets filter out based on area... we will see if this works
@@ -49,7 +42,6 @@ def localize_text_in_image(imgBGR,mask,display=False):
         cv2.polylines(vis,hulls,1,(0,255,0))
         plt.figure("TEXT_REGION")
         plt.imshow(cv2.cvtColor(vis,cv2.COLOR_BGR2RGB))
-        plt.show()
 
     return hulls
 
@@ -72,22 +64,36 @@ def filter_rectangles(contours):
     #Sort the rects based on area, largest area first
     rects.sort(key = lambda x: cv2.contourArea(x),reverse=True)
 
-    return rects
+    #Now make sure that all rectangle inside the unique (Not part of a larger rectangle)
+    rects_new = [rects[0]]
+    for c in rects:
+        x,y,w,h = cv2.boundingRect(c)
+        center = (x + w/2),(y + h/2)
+
+        notunique = False
+        ii = 0
+        while notunique == False and ii < len(rects_new):
+            cc = rects[ii]
+            xx,yy,ww,hh = cv2.boundingRect(cc)
+            if center[0] >= xx and center[0] < xx + ww:
+                if center[1] >= yy and center[1] < yy + hh:
+                    notunique = True
+
+            ii = ii + 1
+
+        if notunique == False:
+            rects_new.append(c)
+
+    return rects_new
 
 def find_contours(imgray,mask=None):
 
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
-    blurred = cv2.GaussianBlur(imgray,(5,5),1)
+    median = cv2.medianBlur(imgray,5)
+    blurred = cv2.GaussianBlur(median,(5,5),1)
     canny = cv2.Canny(blurred,100,200)
-    dilate = cv2.dilate(canny,cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)))
-    res,contours,hierachy = cv2.findContours(dilate,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
-    #For displaying stuff
-    vis = imgray.copy() & 0
-    cv2.drawContours(vis,contours,-1,255)
-
-    plt.figure("find_contours")
-    plt.imshow(np.hstack((imgray,blurred,canny,dilate,vis)),cmap='gray')
+    closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE,np.ones((3,3),np.uint8))
+    res,contours,hierachy = cv2.findContours(closing,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
     return res,contours,hierachy
 
@@ -129,7 +135,7 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
 
     return sortedmap #key: color, value: (colorpercentage,colormask)
 
-def remove_shadows(imgBGR):
+def shadow_balancing(imgBGR):
     pass
 
 

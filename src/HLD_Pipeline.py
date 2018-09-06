@@ -16,35 +16,41 @@ def find_region_of_interest(imgray,display=False):
     #Find region of interest, essential: look for things that might
     #look like a Hazmat label *Knowledge engineering here*
 
+    hazardlabels_mask = []
+
     res,contours,hierachy = imghelp.find_contours(imgray,mask=None)
     rects = imghelp.filter_rectangles(contours)
 
 
-    black = imgray & 0
-    mask = black.copy()
     #get the largest rectangle
-    for i in range(3):
-        rect = cv2.minAreaRect(rects[i]) #rects = (center(x,y),(width,height),angle of rotation)
 
-        #ok now lets form a mask based on that image
-        #First gets a black img that has the same shape as input image then create the mask
+    black = imgray & 0
 
+    for rectContour in rects:
+        rect = cv2.minAreaRect(rectContour)
         box = cv2.boxPoints(rect)
         box = np.int0(box)
-        mask = cv2.drawContours(black,[box],0,255,thickness=-1) + mask
+        mask = cv2.drawContours(black,[box],0,255,thickness=-1)
+        hazardlabels_mask.append(mask)
 
 
     if display:
-        roi = cv2.bitwise_and(imgray,imgray,mask=mask)
-        plt.figure(str(rect))
-        plt.imshow(roi,cmap='gray')
-        plt.show()
+        vis = imgray.copy() & 0
+        cv2.drawContours(vis,contours,-1,255)
 
-    return mask,rect
+        vismask = black.copy()
+        for mask in hazardlabels_mask:
+            mask = mask + vismask
+
+        roi = cv2.bitwise_and(imgray,imgray,mask=mask)
+        plt.figure("ROI")
+        plt.imshow(np.hstack((vis,roi)),cmap='gray')
+
+    return hazardlabels_mask
 
 #Imports a region of interest and
 def identify_text(roiBGR,display=False):
-    pass
+    
 
 
 
@@ -55,15 +61,10 @@ def main():
 
         imgBGR = cv2.imread(sys.argv[1])
         imgray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
+        hlMask = find_region_of_interest(imgray,display=True)
+        imghelp.localize_text_in_image(imgBGR,mask=hlMask[0],display=True)
 
-        #Median blur effect is global --- for now. Meaning the resulting image will be used
-        median = cv2.medianBlur(imgray,MEDIAN_BLUR_KSIZE)
-
-        thresh = cv2.adaptiveThreshold(median,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,
-                                       11,2)
-        #find_region_of_interest(imgray,display=True)
-        #find_region_of_interest(median,display=True)
-        find_region_of_interest(thresh,display=True)
+        plt.show()
 
 
 if __name__ == '__main__':
