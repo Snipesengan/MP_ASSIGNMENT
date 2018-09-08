@@ -25,12 +25,10 @@ def filter_rectangles(contours):
     #Filter out rectangles in the contours
     for c in contours:
         peri = cv2.arcLength(c,True)
-        approx = cv2.approxPolyDP(c,0.04*peri,True)
+        approx = cv2.approxPolyDP(c,0.1*peri,True)
 
         if len(approx) == 4:
             rects.append(c)
-            area = cv2.contourArea(c) #TO DO
-            # More filtering can be done with the area...
 
     #Sort the rects based on area, largest area first
     rects.sort(key = lambda x: cv2.contourArea(x),reverse=True)
@@ -122,6 +120,7 @@ def find_MSER(imgBGR,mask=None,display=False):
         plt.imshow(cv2.cvtColor(vis,cv2.COLOR_BGR2RGB))
 
     return regions
+
 
 #Calculate the percentage of that color and its mask
 def _calculate_percent(imgHSV,lower,upper,mask=None):
