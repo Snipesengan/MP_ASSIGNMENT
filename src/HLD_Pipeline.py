@@ -26,23 +26,31 @@ def find_region_of_interest(imgray,display=False):
 
 
     #get the largest rectangle
-    black = imgray & 0
+    black = np.zeros(imgray.shape,np.uint8)
     displayMask = []
     for rectContour in rects:
-        mask = imgray & 0
+        mask = np.zeros(imgray.shape,np.uint8)
         rect = cv2.minAreaRect(rectContour) #rect = center(x,y),(width,height),angle
         area = rect[1][0] * rect[1][1]
+
+        #Checks if the center of the rect isn't close to centers of previously detected rect
         if area > imgray.shape[0] * imgray.shape[1] * 0.04:
-            cv2.fillPoly(mask,[rectContour],255)
-            hazardlabels_contours_mask.append((rectContour,mask))
-            rect = cv2.minAreaRect(rectContour)
-            box = cv2.boxPoints(rect)
-            box = np.int0(box)
-            displayMask.append(mask)
+            distance2 = 20
+            if len(hazardlabels_contours_mask) > 0:
+                for c,m in hazardlabels_contours_mask:
+                    oldrect = cv2.minAreaRect(c)
+
+                    #Distance between this rect and the old one
+                    distance2 = (rect[0][0]-oldrect[0][0])**2 + (rect[0][1]-oldrect[0][1])**2
+
+            if distance2 >= 20:
+                cv2.fillPoly(mask,[rectContour],255)
+                hazardlabels_contours_mask.append((rectContour,mask))
+                displayMask.append(mask)
 
 
     if display:
-        vis = imgray.copy() & 0
+        vis = np.zeros(imgray.shape,np.uint8)
         cv2.drawContours(vis,contours,-1,255)
 
         vismask = black.copy()
@@ -76,7 +84,6 @@ def identify_text(imgBGR,mask=None,display=False):
     print(text)
 
 
-
 def main():
     if(len(sys.argv) != 2):
         print("Usage -- python {script} <image_path>".format(script=sys.argv[0]))
@@ -88,16 +95,13 @@ def main():
         imgBGR = cv2.imread(imgpath)
         imgray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
         hl_c_m = find_region_of_interest(imgray,display=True)
-
-        """for i, v in enumerate(hl_c_m):
+        for i, v in enumerate(hl_c_m):
             recContour,mask = v
-            print('label ' + str(i))
-            for k,v in imghelp.calculate_color_percentage(imgBGR,mask=mask).items():
-                print(k + ': ' + str(v[0]),end=', ')
-            print()"""
-
-            #imgROI = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
-            #hl = Transform.perspective_trapezoid_to_rect(imgROI,recContour,mask)
+            imgROI = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
+            rect,imgROI = Transform.perspective_trapezoid_to_rect(imgROI,recContour,mask)
+            dst = Transform.affine_correction(imgROI,rect)
+            plt.figure()
+            plt.imshow(cv2.cvtColor(dst,cv2.COLOR_BGR2RGB))
         #identify_text(imgBGR,mask=hlMask[0],display=True)
 
         plt.show()
