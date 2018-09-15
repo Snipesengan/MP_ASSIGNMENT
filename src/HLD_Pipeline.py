@@ -24,7 +24,6 @@ def find_region_of_interest(imgray,display=False):
     res,contours,hierachy = imghelp.find_contours(imgray,mask=None)
     rects = imghelp.filter_rectangles(contours)
 
-
     #get the largest rectangle
     black = np.zeros(imgray.shape,np.uint8)
     displayMask = []
@@ -33,25 +32,28 @@ def find_region_of_interest(imgray,display=False):
         rect = cv2.minAreaRect(rectContour) #rect = center(x,y),(width,height),angle
         area = rect[1][0] * rect[1][1]
 
-        #Checks if the center of the rect isn't close to centers of previously detected rect
-        if area > imgray.shape[0] * imgray.shape[1] * 0.04:
-            distance2 = 20
+        #filter base on area
+        if area > imgray.shape[0] * imgray.shape[1] * 0.03:
+            distancesq = 400
             if len(hazardlabels_contours_mask) > 0:
+                oldrect = cv2.minAreaRect(c)
                 for c,m in hazardlabels_contours_mask:
-                    oldrect = cv2.minAreaRect(c)
 
+
+                    #Checks if the center of the rect isn't close to centers of previously detected rect
                     #Distance between this rect and the old one
-                    distance2 = (rect[0][0]-oldrect[0][0])**2 + (rect[0][1]-oldrect[0][1])**2
+                    curdistancesq = (rect[0][0]-oldrect[0][0])**2 + (rect[0][1]-oldrect[0][1])**2
+                    if curdistancesq < distancesq 
 
-            if distance2 >= 20:
-                cv2.fillPoly(mask,[rectContour],255)
-                hazardlabels_contours_mask.append((rectContour,mask))
-                displayMask.append(mask)
+                    if distancesq >= 400:
+                        cv2.fillPoly(mask,[rectContour],255)
+                        hazardlabels_contours_mask.append((rectContour,mask))
+                        displayMask.append(mask)
 
 
     if display:
         vis = np.zeros(imgray.shape,np.uint8)
-        cv2.drawContours(vis,contours,-1,255)
+        cv2.drawContours(vis,contours,-1,255,3)
 
         vismask = black.copy()
         for mask in displayMask:
@@ -98,10 +100,9 @@ def main():
         for i, v in enumerate(hl_c_m):
             recContour,mask = v
             imgROI = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
-            rect,imgROI = Transform.perspective_trapezoid_to_rect(imgROI,recContour,mask)
-            dst = Transform.affine_correction(imgROI,rect)
+            imgROI = Transform.perspective_trapezoid_to_rect(imgROI,recContour,mask)
             plt.figure()
-            plt.imshow(cv2.cvtColor(dst,cv2.COLOR_BGR2RGB))
+            plt.imshow(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
         #identify_text(imgBGR,mask=hlMask[0],display=True)
 
         plt.show()

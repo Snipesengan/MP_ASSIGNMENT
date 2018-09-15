@@ -22,10 +22,10 @@ COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,25
 def filter_rectangles(contours):
     rects = []
 
-    #Filter out rectangles in the contours
+    #Filter out contours that aren't rectangles
     for c in contours:
         peri = cv2.arcLength(c,True)
-        approx = cv2.approxPolyDP(c,0.1*peri,True)
+        approx = cv2.approxPolyDP(c,0.04*peri,True)
 
         if len(approx) == 4:
             rects.append(c)
@@ -59,9 +59,9 @@ def find_contours(imgray,mask=None):
 
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
     median = cv2.medianBlur(imgray,5)
-    blurred = cv2.GaussianBlur(median,(5,5),1)
+    blurred = cv2.GaussianBlur(median,(5,5),0) #GaussianBlur(src,ksize,sigmaX)
     canny = cv2.Canny(blurred,100,200)
-    closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE,np.ones((3,3),np.uint8))
+    closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE,np.ones((5,5),np.uint8))
     res,contours,hierachy = cv2.findContours(closing,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
     return res,contours,hierachy
