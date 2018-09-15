@@ -6,7 +6,9 @@ import math
 
 DEST_SIZE = (500,500) #size fo the final image after perspective transform
 
-def perspective_trapezoid_to_rect(imgROI,rectContour,mask):
+def perspective_trapezoid_to_rect(imgBGR,rectContour,mask=None):
+
+    imgROI = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
 
     leftmost = tuple(rectContour[rectContour[:,:,0].argmin()][0])
     rightmost = tuple(rectContour[rectContour[:,:,0].argmax()][0])

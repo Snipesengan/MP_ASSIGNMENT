@@ -15,7 +15,7 @@ COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,70,50]),np.array([180,255
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,15])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,255])
 
-MIN_RECT_AREA  = 100000
+MIN_RECT_AREA  = 10000 #TODO: Adjust this dynamically
 
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
@@ -25,53 +25,32 @@ def filter_rectangles(contours):
 
     #Filter out contours that aren't rectangles
     for c in contours:
-        peri = cv2.arcLength(c,True)
-        approx = cv2.approxPolyDP(c,0.1*peri,True)
+        peri = cv2.arcLength(c,True)*0.11 #The higher the number, the more rectangle it looks
+        approx = cv2.approxPolyDP(c,peri,True)
 
         if len(approx) == 4:
-            rects.append(c)
+            rects.append(approx)
 
-    #Sort the rects based on area, largest area first
-    rects.sort(key = lambda x: cv2.contourArea(x),reverse=True)
+    filtered1_rects = _filter_contour_area(rects,MIN_RECT_AREA,None)
+    filtered2_rects = _filter_overlaping_contour(filtered1_rects)
 
-    filter1_rects = [rects.pop(0)]
-    currArea = cv2.contourArea(filter1_rects[0])
-    #Get all the area thats greater than a value
-    while currArea > MIN_RECT_AREA and len(rects) > 0: 
-        rect = rects.pop(0)
-        currArea = cv2.contourArea(rect)
-        filter1_rects.append(rect)
-
-    #Now make sure that all rectangle inside the unique (Not part of a larger rectangle)
-    #now filter out rects that are overlaping or too close to each other, keeping the one with larger area
-    filter2_rects = []
-    for c1 in filter1_rects:
-        (x,y),_,_ = cv2.minAreaRect(c1) #center(x,y)
-        overlapping = False
-
-        for c2 in filter2_rects:
-            leftmost = tuple(c2[c2[:,:,0].argmin()][0])
-            rightmost = tuple(c2[c2[:,:,0].argmax()][0])
-            topmost = tuple(c2[c2[:,:,1].argmin()][0])
-            bottommost = tuple(c2[c2[:,:,1].argmax()][0])
-
-            if int(x) > leftmost[0] and int(x) < rightmost[0] and int(y) > topmost[1] and y < bottommost[1]:
-                overlapping = True
-                break
-
-        if not overlapping:
-            filter2_rects.append(c1)
-
-    return filter2_rects
+    return filtered2_rects
 
 def find_contours(imgray,mask=None):
 
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
-    median = cv2.medianBlur(imgray,5)
+    median = cv2.medianBlur(imgray,3)
     blurred = cv2.GaussianBlur(median,(5,5),0) #GaussianBlur(src,ksize,sigmaX)
-    canny = cv2.Canny(blurred,100,200)
-    closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE,np.ones((5,5),np.uint8))
+    canny = cv2.Canny(blurred,50,150)
+    #dilate = cv2.dilate(canny,np.ones((7,7),np.uint8),iterations = 1)
+    closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE,np.ones((7,7),np.uint8))
     res,contours,hierachy = cv2.findContours(closing,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+    vis =  np.zeros(imgray.shape,np.uint8)
+    cv2.drawContours(vis,contours,-1,255,1)
+    cv2.imwrite("canny.jpg",canny)
+    cv2.imwrite("closing.jpg",closing)
+    cv2.imwrite("contours.jpg",vis)
 
     return res,contours,hierachy
 
@@ -81,16 +60,16 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     colormap = {}
 
     #Calculate percentage of each color
-    colormap['blue']   = _calculate_percent(imgHSV,COLOR_BLUE_LOWER,COLOR_BLUE_UPPER,mask)
-    colormap['green']  = _calculate_percent(imgHSV,COLOR_GREEN_LOWER,COLOR_GREEN_UPPER,mask)
-    colormap['yellow'] = _calculate_percent(imgHSV,COLOR_YELLOW_LOWER,COLOR_YELLOW_UPPER,mask)
-    colormap['orange'] = _calculate_percent(imgHSV,COLOR_ORANGE_LOWER,COLOR_ORANGE_UPPER,mask)
-    colormap['black']  = _calculate_percent(imgHSV,COLOR_BLACK_LOWER,COLOR_BLACK_UPPER,mask)
-    colormap['white']  = _calculate_percent(imgHSV,COLOR_WHITE_LOWER,COLOR_WHITE_UPPER,mask)
+    colormap['blue']   = _calculate_color_percent(imgHSV,COLOR_BLUE_LOWER,COLOR_BLUE_UPPER,mask)
+    colormap['green']  = _calculate_color_percent(imgHSV,COLOR_GREEN_LOWER,COLOR_GREEN_UPPER,mask)
+    colormap['yellow'] = _calculate_color_percent(imgHSV,COLOR_YELLOW_LOWER,COLOR_YELLOW_UPPER,mask)
+    colormap['orange'] = _calculate_color_percent(imgHSV,COLOR_ORANGE_LOWER,COLOR_ORANGE_UPPER,mask)
+    colormap['black']  = _calculate_color_percent(imgHSV,COLOR_BLACK_LOWER,COLOR_BLACK_UPPER,mask)
+    colormap['white']  = _calculate_color_percent(imgHSV,COLOR_WHITE_LOWER,COLOR_WHITE_UPPER,mask)
 
     #For red, since there are two thresholds - need to added them together
-    red1 = _calculate_percent(imgHSV,COLOR_RED1_LOWER,COLOR_RED1_UPPER,mask)
-    red2 = _calculate_percent(imgHSV,COLOR_RED2_LOWER,COLOR_RED2_UPPER,mask)
+    red1 = _calculate_color_percent(imgHSV,COLOR_RED1_LOWER,COLOR_RED1_UPPER,mask)
+    red2 = _calculate_color_percent(imgHSV,COLOR_RED2_LOWER,COLOR_RED2_UPPER,mask)
     red_mask  = np.clip(red1[1] + red2[1],0,255)
     red_percent = red1[0] + red2[0]
 
@@ -132,7 +111,7 @@ def find_MSER(imgBGR,mask=None,display=False):
 
 
 #Calculate the percentage of that color and its mask
-def _calculate_percent(imgHSV,lower,upper,mask=None):
+def _calculate_color_percent(imgHSV,lower,upper,mask=None):
 
     if mask.any != None:
         pixel_count = (mask != 0).sum()
@@ -144,3 +123,41 @@ def _calculate_percent(imgHSV,lower,upper,mask=None):
     color_count = (color != 0).sum()
 
     return (float(color_count)/pixel_count, color)
+
+def _filter_contour_area(contours,minArea,maxArea):
+
+    filtered = None
+    if minArea != None and maxArea != None:
+        filtered = [c for c in contours if (cv2.contourArea(c) >= minArea and cv2.contourArea(c) <= maxArea)]
+    elif minArea != None:
+        filtered = [c for c in contours if cv2.contourArea(c) >= minArea]
+    elif maxArea != None:
+        filtered = [c for c in contours if cv2.contourArea(c) <= maxArea]
+
+    return filtered
+
+def _filter_overlaping_contour(contours):
+
+    filtered = []
+
+    #sort the contours by area - largest to smallest
+    contours.sort(key=lambda x: cv2.contourArea(x),reverse=True)
+
+    for c1 in contours:
+        (x,y),_,_ = cv2.minAreaRect(c1)
+        overlapping = False
+
+        for c2 in filtered:
+            leftmost = tuple(c2[c2[:,:,0].argmin()][0])
+            rightmost = tuple(c2[c2[:,:,0].argmax()][0])
+            topmost = tuple(c2[c2[:,:,1].argmin()][0])
+            bottommost = tuple(c2[c2[:,:,1].argmax()][0])
+
+            if int(x) > leftmost[0] and int(x) < rightmost[0] and int(y) > topmost[1] and y < bottommost[1]:
+                overlapping = True
+                break
+
+        if not overlapping:
+            filtered.append(c1)
+
+    return filtered
