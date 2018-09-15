@@ -20,7 +20,6 @@ def find_region_of_interest(imgray,display=False):
     #look like a Hazmat label *Knowledge engineering here*
 
     hazardlabels_contours_mask = []
-
     res,contours,hierachy = imghelp.find_contours(imgray,mask=None)
     rects = imghelp.filter_rectangles(contours)
 
@@ -29,26 +28,9 @@ def find_region_of_interest(imgray,display=False):
     displayMask = []
     for rectContour in rects:
         mask = np.zeros(imgray.shape,np.uint8)
-        rect = cv2.minAreaRect(rectContour) #rect = center(x,y),(width,height),angle
-        area = rect[1][0] * rect[1][1]
-
-        #filter base on area
-        if area > imgray.shape[0] * imgray.shape[1] * 0.03:
-            distancesq = 400
-            if len(hazardlabels_contours_mask) > 0:
-                oldrect = cv2.minAreaRect(c)
-                for c,m in hazardlabels_contours_mask:
-
-
-                    #Checks if the center of the rect isn't close to centers of previously detected rect
-                    #Distance between this rect and the old one
-                    curdistancesq = (rect[0][0]-oldrect[0][0])**2 + (rect[0][1]-oldrect[0][1])**2
-                    if curdistancesq < distancesq 
-
-                    if distancesq >= 400:
-                        cv2.fillPoly(mask,[rectContour],255)
-                        hazardlabels_contours_mask.append((rectContour,mask))
-                        displayMask.append(mask)
+        cv2.fillPoly(mask,[rectContour],255)
+        hazardlabels_contours_mask.append((rectContour,mask))
+        displayMask.append(mask)
 
 
     if display:

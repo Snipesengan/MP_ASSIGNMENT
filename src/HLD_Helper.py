@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import tkinter
 import matplotlib.pyplot as plt
-import sys
+import math
 
 COLOR_BLUE_LOWER, COLOR_BLUE_UPPER     = np.array([98,109,20]),np.array([112,255,255])
 COLOR_GREEN_LOWER, COLOR_GREEN_UPPER   = np.array([36,0,0]),np.array([75,255,255])
@@ -15,6 +15,7 @@ COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,70,50]),np.array([180,255
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,15])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,255])
 
+MIN_RECT_AREA  = 100000
 
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
@@ -25,7 +26,7 @@ def filter_rectangles(contours):
     #Filter out contours that aren't rectangles
     for c in contours:
         peri = cv2.arcLength(c,True)
-        approx = cv2.approxPolyDP(c,0.04*peri,True)
+        approx = cv2.approxPolyDP(c,0.1*peri,True)
 
         if len(approx) == 4:
             rects.append(c)
@@ -33,27 +34,35 @@ def filter_rectangles(contours):
     #Sort the rects based on area, largest area first
     rects.sort(key = lambda x: cv2.contourArea(x),reverse=True)
 
+    filter1_rects = [rects.pop(0)]
+    currArea = cv2.contourArea(filter1_rects[0])
+    #Get all the area thats greater than a value
+    while currArea > MIN_RECT_AREA and len(rects) > 0: 
+        rect = rects.pop(0)
+        currArea = cv2.contourArea(rect)
+        filter1_rects.append(rect)
+
     #Now make sure that all rectangle inside the unique (Not part of a larger rectangle)
-    rects_new = [rects[0]]
-    for c in rects:
-        x,y,w,h = cv2.boundingRect(c)
-        center = (x + w/2),(y + h/2)
+    #now filter out rects that are overlaping or too close to each other, keeping the one with larger area
+    filter2_rects = []
+    for c1 in filter1_rects:
+        (x,y),_,_ = cv2.minAreaRect(c1) #center(x,y)
+        overlapping = False
 
-        notunique = False
-        ii = 0
-        while notunique == False and ii < len(rects_new):
-            cc = rects[ii]
-            xx,yy,ww,hh = cv2.boundingRect(cc)
-            if center[0] >= xx and center[0] < xx + ww:
-                if center[1] >= yy and center[1] < yy + hh:
-                    notunique = True
+        for c2 in filter2_rects:
+            leftmost = tuple(c2[c2[:,:,0].argmin()][0])
+            rightmost = tuple(c2[c2[:,:,0].argmax()][0])
+            topmost = tuple(c2[c2[:,:,1].argmin()][0])
+            bottommost = tuple(c2[c2[:,:,1].argmax()][0])
 
-            ii = ii + 1
+            if int(x) > leftmost[0] and int(x) < rightmost[0] and int(y) > topmost[1] and y < bottommost[1]:
+                overlapping = True
+                break
 
-        if notunique == False:
-            rects_new.append(c)
+        if not overlapping:
+            filter2_rects.append(c1)
 
-    return rects_new
+    return filter2_rects
 
 def find_contours(imgray,mask=None):
 

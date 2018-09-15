@@ -8,16 +8,10 @@ DEST_SIZE = (500,500) #size fo the final image after perspective transform
 
 def perspective_trapezoid_to_rect(imgROI,rectContour,mask):
 
-
-    rect = cv2.minAreaRect(rectContour)
-    box = cv2.boxPoints(rect)
-    box = np.int0(box)
-
-    cnt = rectContour
-    leftmost = tuple(cnt[cnt[:,:,0].argmin()][0])
-    rightmost = tuple(cnt[cnt[:,:,0].argmax()][0])
-    topmost = tuple(cnt[cnt[:,:,1].argmin()][0])
-    bottommost = tuple(cnt[cnt[:,:,1].argmax()][0])
+    leftmost = tuple(rectContour[rectContour[:,:,0].argmin()][0])
+    rightmost = tuple(rectContour[rectContour[:,:,0].argmax()][0])
+    topmost = tuple(rectContour[rectContour[:,:,1].argmin()][0])
+    bottommost = tuple(rectContour[rectContour[:,:,1].argmax()][0])
 
     fromPoints = np.float32([[bottommost[0],bottommost[1]],
                            [leftmost[0],leftmost[1]],
