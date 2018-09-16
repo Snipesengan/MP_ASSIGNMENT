@@ -41,7 +41,7 @@ def find_contours(imgray,mask=None):
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
     median = cv2.medianBlur(imgray,3)
     blurred = cv2.GaussianBlur(median,(5,5),0) #GaussianBlur(src,ksize,sigmaX)
-    canny = cv2.Canny(blurred,50,150)
+    canny = cv2.Canny(blurred,30,150)
     #dilate = cv2.dilate(canny,np.ones((7,7),np.uint8),iterations = 1)
     closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE,np.ones((7,7),np.uint8))
     res,contours,hierachy = cv2.findContours(closing,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -94,18 +94,20 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
 
 def find_MSER(imgBGR,mask=None,display=False):
     mser = cv2.MSER_create()
-
-    imgBGR = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
-    gray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
-
+    mser.setMaxArea(3000)
+    mser.setMinArea(150)
+    #imgBGR = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
+    #gray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
+    gray = imgBGR
     regions, _ = mser.detectRegions(gray)
+
 
     if display:
         hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
-        vis = imgBGR.copy()
-        cv2.polylines(vis,hulls,1,(0,255,0),thickness=3)
+        vis = imgBGR.copy() & 0
+        cv2.polylines(vis,hulls,1,255,thickness=3)
         plt.figure("MSER")
-        plt.imshow(cv2.cvtColor(vis,cv2.COLOR_BGR2RGB))
+        plt.imshow(vis,cmap='gray')
 
     return regions
 
@@ -136,12 +138,12 @@ def _filter_contour_area(contours,minArea,maxArea):
 
     return filtered
 
-def _filter_overlaping_contour(contours):
+def _filter_overlaping_contour(contours,keepLarger = True):
 
     filtered = []
 
     #sort the contours by area - largest to smallest
-    contours.sort(key=lambda x: cv2.contourArea(x),reverse=True)
+    contours.sort(key=lambda x: cv2.contourArea(x),reverse=keepLarger)
 
     for c1 in contours:
         (x,y),_,_ = cv2.minAreaRect(c1)

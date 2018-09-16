@@ -69,15 +69,16 @@ def white_balancing(imgBGR,mask=None):
 
 #The main pipe line
 def main():
-    if(len(sys.argv) != 2):
-        print("Usage -- python {script} <image_path>".format(script=sys.argv[0]))
+    if(len(sys.argv) < 2):
+        print("Usage -- python {script} <image_path> <-display>".format(script=sys.argv[0]))
     else:
-        hazardlabels = []
 
         imgpath = sys.argv[1]
+        display = False
+        if len(sys.argv) == 3 and sys.argv[2] == '-display':
+            display = True
 
         imgBGR = cv2.imread(imgpath)
-
         imgray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
         hl_c_m = find_region_of_interest(imgray)
 
@@ -86,17 +87,32 @@ def main():
             imgROI = Transform.perspective_trapezoid_to_rect(imgBGR,rectContour,mask)
             ROIList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
 
-        plt.figure("Hazard Label Detection")
-        plt.subplot(211)
-        plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
-        if len(ROIList) > 0:
-            plt.subplot(212)
-            plt.imshow(np.hstack(tuple(ROIList)))
-        else:
-            print("No ROI found")
+        if display:
+            plt.figure("Hazard Label Detection")
+            plt.subplot(211)
+            plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
+            if len(ROIList) > 0:
+                plt.subplot(212)
+                plt.imshow(np.hstack(tuple(ROIList)))
+            else:
+                print("No ROI found")
 
+
+        #Lets find the MSER region and see what it shows
+        #Lets turn this image to a binary image, assume black text --- we will have to
+        #make it work for white text as well
+
+        gray = cv2.cvtColor(ROIList[1],cv2.COLOR_BGR2GRAY)
+        median = cv2.medianBlur(gray,5)
+        blurred = cv2.GaussianBlur(median,(5,5),0) #GaussianBlur(src,ksize,sigmaX)
+        vis = cv2.adaptiveThreshold(blurred,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
+                                    cv2.THRESH_BINARY,15,2)
+
+        imghelp.find_MSER(vis,display=True)
+
+        plt.figure("Threshed")
+        plt.imshow(vis,cmap='gray')
         plt.show()
-
 
 if __name__ == '__main__':
     main()
