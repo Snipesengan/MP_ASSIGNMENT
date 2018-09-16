@@ -6,21 +6,29 @@ import cv2
 import numpy as np
 import tkinter
 import matplotlib.pyplot as plt
-import HLD_Helper as imghelp
+from PIL import Image
 import pytesseract
 import sys
-from PIL import Image
-import Transform
 
+import HLD_Helper as imghelp
+import HLD_Transform as transform
+import HLD_Tuner
 
-def find_region_of_interest(imgray):
+def find_region_of_interest(imgray,tuner):
+
+    cannyMin   = tuner.cannyMin
+    cannyMax   = tuner.cannyMax
+    morphK     = tuner.morphK
+    minROIArea = tuner.minROIArea
+    maxROIArea = tuner.maxROIArea
+    epsilon    = tuner.epsilon
+
     #Find region of interest, essential: look for things that might
     #look like a Hazmat label *Knowledge engineering here*
-
     hazardlabels_contours_mask = []
-    res,contours,hierachy = imghelp.find_contours(imgray,30,150,np.ones((7,7),np.uint8))
-    contours = imghelp.filter_contour_area(contours,10000,None) #contours,minArea,maxArea
-    rects = imghelp.filter_rectangles(contours)
+    res,contours,hierachy = imghelp.find_contours(imgray,cannyMin,cannyMax,morphK)
+    contours = imghelp.filter_contour_area(contours,minROIArea,maxROIArea) #contours,minArea,maxArea
+    rects = imghelp.filter_rectangles(contours,epsilon)
     rects = imghelp.filter_overlaping_contour(rects)
 
     #For each rect contours, create a the corresponding mask
@@ -35,20 +43,23 @@ def find_region_of_interest(imgray):
     return hazardlabels_contours_mask
 
 #Use MSER to extract
-def extract_hazard_label_text_region(roiBGR,medianKsize,gaussK,threshBSize,threshC):
-    roiGray = cv2.cvtColor(roiBGR,cv2.COLOR_BGR2GRAY)
-    roiMedian = cv2.medianBlur(roiGray,medianKsize)
-    roiBlurred = cv2.GaussianBlur(roiMedian,gaussK,0)
-    roiThresh = cv2.adaptiveThreshold(roiBlurred,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
-                                      threshBSize,threshC)
-    mserRegion,mserVis = imghelp.find_MSER(roiThresh)
+def extract_hazard_label_text_region(roiGray,tuner):
+
+    minBlobArea = tuner.minBlobArea
+    maxBlobArea = tuner.maxBlobArea
+    threshBlock = tuner.threshBlock
+    threshC     = tuner.threshC
+
+    mserRegion,mserVis = imghelp.find_MSER(roiGray,minBlobArea,maxBlobArea,threshBlock,threshC)
 
     return mserRegion,mserVis
+
 #The main pipe line
 def run_detection(imgpath,display):
 
     ROIList = []
     mserRegionList = []
+    tuner = HLD_Tuner.Tuner()
 
     if display:
         mserVisList = []
@@ -56,16 +67,15 @@ def run_detection(imgpath,display):
     imgBGR = cv2.imread(imgpath)
     imgray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
 
-    median = cv2.medianBlur(imgray,3)
-    blurred = cv2.GaussianBlur(median,(5,5),0) #GaussianBlur(src,ksize,sigmaX)
-    hl_c_m = find_region_of_interest(blurred)
+    median = cv2.medianBlur(imgray,tuner.medianKSize)
+    blurred = cv2.GaussianBlur(median,tuner.gaussKSize,tuner.gaussSigmaX)
+    hl_c_m = find_region_of_interest(blurred,tuner)
 
     for i, (rectContour,mask) in enumerate(hl_c_m):
-        imgROI = Transform.perspective_trapezoid_to_rect(imgBGR,rectContour,mask)
+        imgROI = transform.perspective_trapezoid_to_rect(blurred,rectContour,tuner.finalSize,mask)
         ROIList.append(imgROI)
 
-    for roi in ROIList:
-        mserRegion,mserVis = extract_hazard_label_text_region(roi,5,(5,5),17,2)
+        mserRegion,mserVis = extract_hazard_label_text_region(imgROI,tuner)
         mserRegionList.append(mserRegion)
         if display:
             mserVisList.append(mserVis)
@@ -76,8 +86,7 @@ def run_detection(imgpath,display):
         plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
         if len(ROIList) > 0:
             plt.subplot(312)
-            roiVis = [cv2.cvtColor(img,cv2.COLOR_BGR2RGB) for img in ROIList]
-            plt.imshow(np.hstack(tuple(roiVis)))
+            plt.imshow(np.hstack(tuple(ROIList)),cmap='gray')
             plt.subplot(313)
             plt.imshow(np.hstack(tuple(mserVisList)),cmap='gray')
         else:

@@ -6,7 +6,7 @@ import math
 
 DEST_SIZE = (500,500) #size fo the final image after perspective transform
 
-def perspective_trapezoid_to_rect(imgBGR,rectContour,mask=None):
+def perspective_trapezoid_to_rect(imgBGR,rectContour,finalSize,mask=None):
 
     imgROI = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
 
@@ -26,6 +26,6 @@ def perspective_trapezoid_to_rect(imgBGR,rectContour,mask=None):
                            [DEST_SIZE[0],DEST_SIZE[1]/2]])
 
     M = cv2.getPerspectiveTransform(fromPoints,toPoints)
-    des = cv2.warpPerspective(imgROI,M,(500,500))
+    des = cv2.warpPerspective(imgROI,M,finalSize)
 
     return des

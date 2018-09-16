@@ -20,7 +20,7 @@ MIN_RECT_AREA  = 10000 #TODO: Adjust this dynamically
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
 #that thresholds can be set easier this way..
-def filter_rectangles(contours,epsilon=0.11):
+def filter_rectangles(contours,epsilon):
     rects = []
 
     #Filter out contours that aren't rectangles
@@ -45,12 +45,12 @@ def filter_contour_area(contours,minArea,maxArea):
 
     return filtered
 
-def filter_overlaping_contour(contours,keepLarger=True):
+def filter_overlaping_contour(contours):
 
     filtered = []
 
     #sort the contours by area - largest to smallest
-    contours.sort(key=lambda x: cv2.contourArea(x),reverse=keepLarger)
+    contours.sort(key=lambda x: cv2.contourArea(x),reverse=True)
 
     for c1 in contours:
         (x,y),_,_ = cv2.minAreaRect(c1)
@@ -119,11 +119,15 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     return sortedmap #key: color, value: (colorpercentage,colormask)
 
 
-def find_MSER(imgray,mask=None,minArea=150,maxArea=2200):
+def find_MSER(imgray,minArea,maxArea,blockSize,C):
+
     mser = cv2.MSER_create()
     mser.setMaxArea(maxArea)
     mser.setMinArea(minArea)
-    regions, _ = mser.detectRegions(imgray)
+
+    thresh = cv2.adaptiveThreshold(imgray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
+                                      blockSize,C)
+    regions, _ = mser.detectRegions(thresh)
 
     hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
     vis = np.zeros(imgray.shape,np.uint8)
