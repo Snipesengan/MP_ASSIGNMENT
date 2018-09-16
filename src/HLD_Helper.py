@@ -20,37 +20,64 @@ MIN_RECT_AREA  = 10000 #TODO: Adjust this dynamically
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
 #that thresholds can be set easier this way..
-def filter_rectangles(contours):
+def filter_rectangles(contours,epsilon=0.11):
     rects = []
 
     #Filter out contours that aren't rectangles
     for c in contours:
-        peri = cv2.arcLength(c,True)*0.11 #The higher the number, the more rectangle it looks
+        peri = cv2.arcLength(c,True)*epsilon #The higher the number, the more rectangle it looks
         approx = cv2.approxPolyDP(c,peri,True)
 
         if len(approx) == 4:
             rects.append(approx)
 
-    filtered1_rects = _filter_contour_area(rects,MIN_RECT_AREA,None)
-    filtered2_rects = _filter_overlaping_contour(filtered1_rects)
+    return rects
 
-    return filtered2_rects
+def filter_contour_area(contours,minArea,maxArea):
 
-def find_contours(imgray,mask=None):
+    filtered = None
+    if minArea != None and maxArea != None:
+        filtered = [c for c in contours if (cv2.contourArea(c) >= minArea and cv2.contourArea(c) <= maxArea)]
+    elif minArea != None:
+        filtered = [c for c in contours if cv2.contourArea(c) >= minArea]
+    elif maxArea != None:
+        filtered = [c for c in contours if cv2.contourArea(c) <= maxArea]
+
+    return filtered
+
+def filter_overlaping_contour(contours,keepLarger=True):
+
+    filtered = []
+
+    #sort the contours by area - largest to smallest
+    contours.sort(key=lambda x: cv2.contourArea(x),reverse=keepLarger)
+
+    for c1 in contours:
+        (x,y),_,_ = cv2.minAreaRect(c1)
+        overlapping = False
+
+        for c2 in filtered:
+            leftmost = tuple(c2[c2[:,:,0].argmin()][0])
+            rightmost = tuple(c2[c2[:,:,0].argmax()][0])
+            topmost = tuple(c2[c2[:,:,1].argmin()][0])
+            bottommost = tuple(c2[c2[:,:,1].argmax()][0])
+
+            if int(x) > leftmost[0] and int(x) < rightmost[0] and int(y) > topmost[1] and y < bottommost[1]:
+                overlapping = True
+                break
+
+        if not overlapping:
+            filtered.append(c1)
+
+    return filtered
+
+
+def find_contours(imgray,cannyMin,cannyMax,morphKernel,mask=None):
 
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
-    median = cv2.medianBlur(imgray,3)
-    blurred = cv2.GaussianBlur(median,(5,5),0) #GaussianBlur(src,ksize,sigmaX)
-    canny = cv2.Canny(blurred,30,150)
-    #dilate = cv2.dilate(canny,np.ones((7,7),np.uint8),iterations = 1)
-    closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE,np.ones((7,7),np.uint8))
+    canny = cv2.Canny(imgray,cannyMin,cannyMax)
+    closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, morphKernel)
     res,contours,hierachy = cv2.findContours(closing,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
-    vis =  np.zeros(imgray.shape,np.uint8)
-    cv2.drawContours(vis,contours,-1,255,1)
-    cv2.imwrite("canny.jpg",canny)
-    cv2.imwrite("closing.jpg",closing)
-    cv2.imwrite("contours.jpg",vis)
 
     return res,contours,hierachy
 
@@ -92,24 +119,17 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     return sortedmap #key: color, value: (colorpercentage,colormask)
 
 
-def find_MSER(imgBGR,mask=None,display=False):
+def find_MSER(imgray,mask=None,minArea=150,maxArea=2200):
     mser = cv2.MSER_create()
-    mser.setMaxArea(3000)
-    mser.setMinArea(150)
-    #imgBGR = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
-    #gray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
-    gray = imgBGR
-    regions, _ = mser.detectRegions(gray)
+    mser.setMaxArea(maxArea)
+    mser.setMinArea(minArea)
+    regions, _ = mser.detectRegions(imgray)
 
+    hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
+    vis = np.zeros(imgray.shape,np.uint8)
+    cv2.polylines(vis,hulls,1,255,thickness=3)
 
-    if display:
-        hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
-        vis = imgBGR.copy() & 0
-        cv2.polylines(vis,hulls,1,255,thickness=3)
-        plt.figure("MSER")
-        plt.imshow(vis,cmap='gray')
-
-    return regions
+    return regions,vis
 
 
 #Calculate the percentage of that color and its mask
@@ -125,41 +145,3 @@ def _calculate_color_percent(imgHSV,lower,upper,mask=None):
     color_count = (color != 0).sum()
 
     return (float(color_count)/pixel_count, color)
-
-def _filter_contour_area(contours,minArea,maxArea):
-
-    filtered = None
-    if minArea != None and maxArea != None:
-        filtered = [c for c in contours if (cv2.contourArea(c) >= minArea and cv2.contourArea(c) <= maxArea)]
-    elif minArea != None:
-        filtered = [c for c in contours if cv2.contourArea(c) >= minArea]
-    elif maxArea != None:
-        filtered = [c for c in contours if cv2.contourArea(c) <= maxArea]
-
-    return filtered
-
-def _filter_overlaping_contour(contours,keepLarger = True):
-
-    filtered = []
-
-    #sort the contours by area - largest to smallest
-    contours.sort(key=lambda x: cv2.contourArea(x),reverse=keepLarger)
-
-    for c1 in contours:
-        (x,y),_,_ = cv2.minAreaRect(c1)
-        overlapping = False
-
-        for c2 in filtered:
-            leftmost = tuple(c2[c2[:,:,0].argmin()][0])
-            rightmost = tuple(c2[c2[:,:,0].argmax()][0])
-            topmost = tuple(c2[c2[:,:,1].argmin()][0])
-            bottommost = tuple(c2[c2[:,:,1].argmax()][0])
-
-            if int(x) > leftmost[0] and int(x) < rightmost[0] and int(y) > topmost[1] and y < bottommost[1]:
-                overlapping = True
-                break
-
-        if not overlapping:
-            filtered.append(c1)
-
-    return filtered
