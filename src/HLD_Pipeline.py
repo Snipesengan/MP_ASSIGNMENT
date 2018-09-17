@@ -43,16 +43,29 @@ def find_region_of_interest(imgray,tuner):
     return hazardlabels_contours_mask
 
 #Use MSER to extract
-def extract_hazard_label_text_region(roiGray,tuner):
+def extract_hazard_label_text_region(roiBGR,tuner):
 
     minBlobArea = tuner.minBlobArea
     maxBlobArea = tuner.maxBlobArea
     threshBlock = tuner.threshBlock
     threshC     = tuner.threshC
 
-    mserRegion,mserVis = imghelp.find_MSER(roiGray,minBlobArea,maxBlobArea,threshBlock,threshC)
+    roiGray = cv2.cvtColor(roiBGR,cv2.COLOR_BGR2GRAY)
+    mserRegion,mserVis,thresh = imghelp.find_MSER(roiGray,minBlobArea,maxBlobArea,threshBlock,threshC)
+    filtered = imghelp.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
 
-    return mserRegion,mserVis
+    hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in filtered]
+    mask = np.zeros(thresh.shape,np.uint8)
+    cv2.fillPoly(mask,hulls,255)
+
+    textBinary = cv2.bitwise_and(roiGray,roiGray,mask=mask)
+
+    cv2.imwrite("TesseractStoreImg.png",textBinary)
+    config = ('-l eng --oem 1 --psm 6')
+    text = pytesseract.image_to_string(Image.open("TesseractStoreImg.png"),config=config)
+    print(text)
+
+    return mserRegion, np.vstack((thresh,mserVis,textBinary))
 
 #The main pipe line
 def run_detection(imgpath,display):
@@ -63,6 +76,7 @@ def run_detection(imgpath,display):
 
     if display:
         mserVisList = []
+        roiVisList = []
 
     imgBGR = cv2.imread(imgpath)
     imgray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
@@ -72,13 +86,18 @@ def run_detection(imgpath,display):
     hl_c_m = find_region_of_interest(blurred,tuner)
 
     for i, (rectContour,mask) in enumerate(hl_c_m):
-        imgROI = transform.perspective_trapezoid_to_rect(blurred,rectContour,tuner.finalSize,mask)
+        imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
         ROIList.append(imgROI)
 
-        mserRegion,mserVis = extract_hazard_label_text_region(imgROI,tuner)
+        #Lets crop the imgROI into thirds
+
+        textROI = imgROI[int(imgROI.shape[1]*1/3):int(imgROI.shape[1]*2/3),50:-50,...]
+
+        mserRegion,textROIVis = extract_hazard_label_text_region(textROI,tuner)
         mserRegionList.append(mserRegion)
         if display:
-            mserVisList.append(mserVis)
+            roiVisList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
+            mserVisList.append(textROIVis)
 
     if display:
         plt.figure("Hazard Label Detection")
@@ -86,7 +105,7 @@ def run_detection(imgpath,display):
         plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
         if len(ROIList) > 0:
             plt.subplot(312)
-            plt.imshow(np.hstack(tuple(ROIList)),cmap='gray')
+            plt.imshow(np.hstack(tuple(roiVisList)))
             plt.subplot(313)
             plt.imshow(np.hstack(tuple(mserVisList)),cmap='gray')
         else:

@@ -9,7 +9,7 @@ class Tuner:
 
     def __init__(self):
         #pre-processing
-        self._medianKSize = 3
+        self._medianKSize = 5
         self._gaussKSize  = (5,5)
         self._gaussSigmaX = 0
 
@@ -17,7 +17,7 @@ class Tuner:
         self._cannyMax    = 150
         self._cannyMin    = 50
         self._morphK      = np.ones((7,7),np.uint8)
-        self._minROIArea  = 10000
+        self._minROIArea  = 20000
         self._maxROIArea  = None
         self._epsilon     = 0.11
 
@@ -26,9 +26,10 @@ class Tuner:
 
         #Text localization
         self._minBlobArea = 150
-        self._maxBlobArea = 2200
+        self._maxBlobArea = 4000
         self._threshBlock = 15
         self._threshC     = 2
+        self._maxE           = 0.8
 
     #Lets make setter and getters for these things lmao, python sucks at OO
     def medianKSize():
@@ -185,3 +186,14 @@ class Tuner:
             del self._threshC
         return locals()
     threshC = property(**threshC())
+
+    def maxE():
+        doc = "Thee property."
+        def fget(self):
+            return self._maxE
+        def fset(self, value):
+            self._maxE = value
+        def fdel(self):
+            del self._maxE
+        return locals()
+    maxE = property(**maxE())

@@ -133,8 +133,29 @@ def find_MSER(imgray,minArea,maxArea,blockSize,C):
     vis = np.zeros(imgray.shape,np.uint8)
     cv2.polylines(vis,hulls,1,255,thickness=3)
 
-    return regions,vis
 
+    areaFilter = []
+    for i,region in enumerate(hulls):
+        area = cv2.contourArea(region)
+        if area >= minArea and area <= maxArea:
+            areaFilter.append(regions[i])
+
+    return areaFilter,vis,thresh
+
+#This function attemps to cluster regions based ellipse, the ratio of semi major axis to minor axis
+def filter_regions_by_eccentricity(regions,maxEccentricity):
+
+    filtered = []
+
+    for r in regions:
+        (x,y),(MA,ma),angle = cv2.fitEllipse(r)
+
+        eccentricty = (1 - MA/ma)**(0.5)
+
+        if eccentricty < maxEccentricity:
+            filtered.append(r)
+
+    return filtered
 
 #Calculate the percentage of that color and its mask
 def _calculate_color_percent(imgHSV,lower,upper,mask=None):
