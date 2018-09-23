@@ -74,10 +74,12 @@ def filter_overlaping_contour(contours):
 
 def find_contours(imgray,cannyMin,cannyMax,morphKernel,mask=None):
 
+
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
     canny = cv2.Canny(imgray,cannyMin,cannyMax)
     closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, morphKernel)
     res,contours,hierachy = cv2.findContours(closing,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
 
     return res,contours,hierachy
 
@@ -118,44 +120,6 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
 
     return sortedmap #key: color, value: (colorpercentage,colormask)
 
-
-def find_MSER(imgray,minArea,maxArea,blockSize,C):
-
-    mser = cv2.MSER_create()
-    mser.setMaxArea(maxArea)
-    mser.setMinArea(minArea)
-
-    thresh = cv2.adaptiveThreshold(imgray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
-                                      blockSize,C)
-    regions, _ = mser.detectRegions(thresh)
-
-    hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
-    vis = np.zeros(imgray.shape,np.uint8)
-    cv2.polylines(vis,hulls,1,255,thickness=3)
-
-
-    areaFilter = []
-    for i,region in enumerate(hulls):
-        area = cv2.contourArea(region)
-        if area >= minArea and area <= maxArea:
-            areaFilter.append(regions[i])
-
-    return areaFilter,vis,thresh
-
-#This function attemps to cluster regions based ellipse, the ratio of semi major axis to minor axis
-def filter_regions_by_eccentricity(regions,maxEccentricity):
-
-    filtered = []
-
-    for r in regions:
-        (x,y),(MA,ma),angle = cv2.fitEllipse(r)
-
-        eccentricty = (1 - MA/ma)**(0.5)
-
-        if eccentricty < maxEccentricity:
-            filtered.append(r)
-
-    return filtered
 
 #Calculate the percentage of that color and its mask
 def _calculate_color_percent(imgHSV,lower,upper,mask=None):

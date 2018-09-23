@@ -11,6 +11,7 @@ import pytesseract
 import sys
 
 import HLD_Helper as imghelp
+import HLD_TextProcessing as textproc
 import HLD_Transform as transform
 import HLD_Tuner
 
@@ -50,22 +51,34 @@ def extract_hazard_label_text_region(roiBGR,tuner):
     threshBlock = tuner.threshBlock
     threshC     = tuner.threshC
 
-    roiGray = cv2.cvtColor(roiBGR,cv2.COLOR_BGR2GRAY)
-    mserRegion,mserVis,thresh = imghelp.find_MSER(roiGray,minBlobArea,maxBlobArea,threshBlock,threshC)
-    filtered = imghelp.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
+    vThresh = textproc.perform_adaptive_thresh(roiBGR)
 
-    hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in filtered]
-    mask = np.zeros(thresh.shape,np.uint8)
-    cv2.fillPoly(mask,hulls,255)
+    mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,threshBlock,threshC)
+    filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
+    filtered = textproc.filter_regions_by_textHomogeneity(filtered)
+    filtered = textproc.filter_regions_by_yCluster(filtered)
+    mask = np.zeros(roiBGR.shape[:-1],np.uint8)
+    cv2.drawContours(mask,filtered,-1,255,-1)
 
-    textBinary = cv2.bitwise_and(roiGray,roiGray,mask=mask)
 
-    cv2.imwrite("TesseractStoreImg.png",textBinary)
-    config = ('-l eng --oem 1 --psm 6')
-    text = pytesseract.image_to_string(Image.open("TesseractStoreImg.png"),config=config)
-    print(text)
+    #textColor = textproc.detect_text_color(filtered)
+    textRegion = cv2.bitwise_and(vThresh,vThresh,mask=mask)
+    cv2.imwrite("test.png",textRegion)
+    config = ('-l eng --oem 3 --psm 6')
+    print(pytesseract.image_to_string(Image.open('test.png'),config=config))
+    textRegion = cv2.bitwise_and(vThresh,vThresh,mask=mask)
 
-    return mserRegion, np.vstack((thresh,mserVis,textBinary))
+    print(pytesseract.image_to_string(Image.open('test.png'),config=config))
+    """
+    if textColor == "white":
+        textRegion = cv2.bitwise_and(vThresh,vThresh,mask=mask)
+    elif textColor == "black":
+        textRegion = cv2.bitwise_and(255 - vThresh,255 - vThresh,mask=mask)
+    """
+    cv2.imwrite("test.png",textRegion)
+    config = ('-l eng --oem 3 --psm 6')
+
+    return mserRegion, np.vstack((vThresh,mserVis,textRegion))
 
 #The main pipe line
 def run_detection(imgpath,display):
@@ -91,7 +104,8 @@ def run_detection(imgpath,display):
 
         #Lets crop the imgROI into thirds
 
-        textROI = imgROI[int(imgROI.shape[1]*1/3):int(imgROI.shape[1]*2/3),50:-50,...]
+        textROI = imgROI[tuner.textCropY:-tuner.textCropY,tuner.textCropX:-tuner.textCropX,...]
+
 
         mserRegion,textROIVis = extract_hazard_label_text_region(textROI,tuner)
         mserRegionList.append(mserRegion)

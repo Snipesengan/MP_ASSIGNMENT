@@ -25,11 +25,14 @@ class Tuner:
         self._finalSize   = (500,500)
 
         #Text localization
-        self._minBlobArea = 150
+        self._textCropX   = 25
+        self._textCropY   = 120
+        self._minBlobArea = 125
         self._maxBlobArea = 4000
-        self._threshBlock = 15
+        self._threshBlock = 33
         self._threshC     = 2
-        self._maxE           = 0.8
+        self._maxE        = 0.98
+        self._minTextHeight = 20
 
     #Lets make setter and getters for these things lmao, python sucks at OO
     def medianKSize():
@@ -110,7 +113,7 @@ class Tuner:
     minROIArea = property(**minROIArea())
 
     def maxROIArea():
-        doc = "ThemaxROIArea property."
+        doc = "The maxROIArea property."
         def fget(self):
             return self._maxROIArea
         def fset(self, value):
@@ -121,7 +124,7 @@ class Tuner:
     maxROIArea = property(**maxROIArea())
 
     def epsilon():
-        doc = "Theepsilon property."
+        doc = "The epsilon property."
         def fget(self):
             return self._epsilon
         def fset(self, value):
@@ -133,7 +136,7 @@ class Tuner:
 
 
     def finalSize():
-        doc = "ThefinalSize property."
+        doc = "The finalSize property."
         def fget(self):
             return self._finalSize
         def fset(self, value):
@@ -142,6 +145,28 @@ class Tuner:
             del self._finalSize
         return locals()
     finalSize = property(**finalSize())
+
+    def textCropY():
+        doc = "The textCropY property."
+        def fget(self):
+            return self._textCropY
+        def fset(self, value):
+            self._textCropY = value
+        def fdel(self):
+            del self._textCropY
+        return locals()
+    textCropY = property(**textCropY())
+
+    def textCropX():
+        doc = "The textCropX property."
+        def fget(self):
+            return self._textCropX
+        def fset(self, value):
+            self._textCropX = value
+        def fdel(self):
+            del self._textCropX
+        return locals()
+    textCropX = property(**textCropX())
 
     def minBlobArea():
         doc = "The _minBlobArea property."
@@ -197,3 +222,14 @@ class Tuner:
             del self._maxE
         return locals()
     maxE = property(**maxE())
+
+    def minTextHeight():
+        doc = "TheminTextHeight property."
+        def fget(self):
+            return self._minTextHeight
+        def fset(self, value):
+            self._minTextHeight = value
+        def fdel(self):
+            del self._minTextHeight
+        return locals()
+    minTextHeight = property(**minTextHeight())

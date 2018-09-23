@@ -1,0 +1,186 @@
+label-1-explosive-subsidiary.png
+
+
+
+label-1_3-explosive.png
+k A
+EXPLOSIVE
+
+label-1_4-explosive.png
+k A
+I
+EXPLOSIVE
+
+label-1_5-blasting-agent.png
+x1
+I
+BLASTING AGENT
+
+label-1_6-explosive.png
+k A
+I
+EXPLOSIVE
+
+label-2-flammable-gas.png
+0
+FLAMMABLE GAS
+
+
+label-2-non-flammable-gas.png
+NON FLAMMABLE GAS
+
+
+label-2-poison-gas.png
+r V
+x
+INHALATION
+HAZARD
+
+label-3-flammable-liquid.png
+0
+FLAMMABLE LIQUID
+
+
+label-4-dangerous-when-wet.png
+kDANGEROUS A
+
+
+label-4-spontaneously-combustible.png
+
+label-5_1-oxidizer.png
+L/A
+OXIDIZER
+
+label-5_2-organic-peroxide.png
+L A
+ORGANIC PEROXIDE
+
+label-6-poison-inhalation-hazard.png
+x A
+INHALATION
+HAZARD
+
+label-6-poison.png
+
+
+
+label-7-radioactive-i.png
+LIA
+RADIOACTIVE l
+
+label-7-radioactive-ii.png
+km
+RADIOACTIVE II
+
+label-7-radioactive-iii.png
+K4
+RADIOACTIVE III
+
+label-8-corrosive.png
+CORROSIVE
+
+
+placard-1_4-explosives.png
+r,“
+'l .4
+EXPLOSIVES
+
+placard-1_5-blasting-agents.png
+r V
+'l .5
+BLASTING
+AGENTS
+
+placard-1_6-explosives.png
+73‘
+'l .b
+EXPLOSIVES
+
+placard-2-flammable-gas.png
+Q T ‘
+VFLAMMABLE
+GAS
+
+
+placard-2-inhalation-hazard.png
+L
+V
+INHALATION
+HAZARD
+
+placard-2-non-flammable-gas.png
+V ‘
+«NON FLAMMABLE
+GAS
+
+
+placard-2-oxygen.png
+r 0‘
+r 1
+OXYGEN
+
+placard-3-combustible.png
+V M ‘
+‘COMBUSTIBLE
+
+
+placard-3-flammable.png
+V M ‘
+<FLAMMABLE
+
+
+placard-3-fuel-oil.png
+V M ‘
+FUEL OIL
+
+
+placard-3-gasoline.png
+V M ‘
+GASOLINE
+
+
+placard-4-dangerous-when-wet.png
+V M V
+DANGEROUSVﬂEr"
+
+
+placard-4-spontaneously-combustible.png
+{A
+COMBUSTIBLE
+
+placard-5_1-oxidizer.png
+70‘
+r 1
+OXIDIZER
+
+placard-5_2-organic-peroxide.png
+x 'A
+ORGANIC
+PEROXIDE
+
+placard-6-inhalation-hazard.png
+L
+V
+INHALATION
+HAZARD
+
+placard-6-poison.png
+
+
+
+placard-7-radioactive.png
+kIO ‘
+25
+RADIOACTIVE
+
+placard-8-corrosive-notext.png
+
+
+
+placard-8-corrosive.png
+CORROSIVE
+\U‘
+‘01‘o\“
+
+test.png
+
