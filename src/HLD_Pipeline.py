@@ -52,33 +52,25 @@ def extract_hazard_label_text_region(roiBGR,tuner):
     threshC     = tuner.threshC
 
     vThresh = textproc.perform_adaptive_thresh(roiBGR)
-
     mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,threshBlock,threshC)
+    filtered = textproc.filter_overlaping_regions(mserRegion,10,10)
     filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
-    filtered = textproc.filter_regions_by_textHomogeneity(filtered)
-    filtered = textproc.filter_regions_by_yCluster(filtered)
+    filtered = textproc.filter_regions_by_textHomogeneity(filtered,0.25)
+    filtered = textproc.filter_regions_by_yCluster(filtered,0,vThresh.shape[0])
+
     mask = np.zeros(roiBGR.shape[:-1],np.uint8)
     cv2.drawContours(mask,filtered,-1,255,-1)
+    textRegion1 = cv2.bitwise_and(vThresh,vThresh,mask=mask)[140:-140,...]
 
-
-    #textColor = textproc.detect_text_color(filtered)
-    textRegion = cv2.bitwise_and(vThresh,vThresh,mask=mask)
-    cv2.imwrite("test.png",textRegion)
+    cv2.imwrite("test.png",255 - textRegion1)
     config = ('-l eng --oem 3 --psm 6')
     print(pytesseract.image_to_string(Image.open('test.png'),config=config))
-    textRegion = cv2.bitwise_and(vThresh,vThresh,mask=mask)
-
+    textRegion2 = cv2.bitwise_and(255-vThresh,255-vThresh,mask=mask)[140:-140,...]
+    cv2.imwrite("test.png",255 - textRegion2)
+    config = ('-l eng --oem 1 --psm 6')
     print(pytesseract.image_to_string(Image.open('test.png'),config=config))
-    """
-    if textColor == "white":
-        textRegion = cv2.bitwise_and(vThresh,vThresh,mask=mask)
-    elif textColor == "black":
-        textRegion = cv2.bitwise_and(255 - vThresh,255 - vThresh,mask=mask)
-    """
-    cv2.imwrite("test.png",textRegion)
-    config = ('-l eng --oem 3 --psm 6')
 
-    return mserRegion, np.vstack((vThresh,mserVis,textRegion))
+    return mserRegion, np.vstack((mserVis[140:-140,...],mask[140:-140,...],255 - textRegion1,255 - textRegion2))
 
 #The main pipe line
 def run_detection(imgpath,display):

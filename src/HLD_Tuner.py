@@ -9,7 +9,7 @@ class Tuner:
 
     def __init__(self):
         #pre-processing
-        self._medianKSize = 5
+        self._medianKSize = 3
         self._gaussKSize  = (5,5)
         self._gaussSigmaX = 0
 
@@ -26,8 +26,8 @@ class Tuner:
 
         #Text localization
         self._textCropX   = 25
-        self._textCropY   = 120
-        self._minBlobArea = 125
+        self._textCropY   = 10
+        self._minBlobArea = 75
         self._maxBlobArea = 4000
         self._threshBlock = 33
         self._threshC     = 2
