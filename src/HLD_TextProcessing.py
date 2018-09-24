@@ -9,6 +9,7 @@ def find_MSER(imgray,minArea,maxArea,blockSize,C):
     mser = cv2.MSER_create()
     mser.setMaxArea(maxArea)
     mser.setMinArea(minArea)
+    mser.setDelta(250)
 
     regions, _ = mser.detectRegions(imgray)
 
@@ -77,31 +78,32 @@ def filter_overlaping_regions(regions,tolX,tolY):
 def filter_regions_by_yCluster(regions,minY,maxY):
 
     filtered = []
-    numBins = 20
+    numBins = 40
 
     histArr = []
-    #filter by text size
+
     for r in regions:
-        x,y,w,h = cv2.boundingRect(r)
+        y = r[r[:,1].argmin()][1]
         histArr.append(y)
 
     hist,binEdge = np.histogram(histArr,bins=numBins,range=(minY,maxY))
 
     for i in np.where(hist >= 3)[0]:
-        if abs(i - hist.argmax()) < 10: # less than 4 cluster away
-            minY = binEdge[i]
-            maxY = binEdge[i + 1]
+        dymin = binEdge[i]
+        dymax = binEdge[i + 1]
 
-            for r in regions:
-                x,y,w,h = cv2.boundingRect(r)
-                if y >= minY and y <= maxY:
-                    filtered.append(r)
+        cluster = []
+        for r in regions:
+            y = r[r[:,1].argmin()][1]
+            if y >= dymin and y <= dymax:
+                cluster.append(r)
+        filtered.append(cluster)
 
     return filtered
 
 def filter_regions_by_textHomogeneity(regions,dy):
     filtered = []
-    numBins = 30
+    numBins = 100
 
     histArr = []
     #filter by text size
@@ -110,15 +112,19 @@ def filter_regions_by_textHomogeneity(regions,dy):
         histArr.append(h)
 
     hist,binEdge = np.histogram(histArr,bins=numBins)
-    print(hist)
     for i in np.where(hist >= 3)[0]:
 
         minHeight = binEdge[i] * (1 - dy)
         maxHeight = binEdge[i] * (1 + dy)
 
+        regionArea = 0
         for r in regions:
             x,y,w,h = cv2.boundingRect(r)
+            tmpfilter = []
             if h >= minHeight and h <= maxHeight:
-                filtered.append(r)
+                regionArea = regionArea + 0
+
+                if not (r in np.array(filtered)):
+                    filtered.append(r)
 
     return filtered

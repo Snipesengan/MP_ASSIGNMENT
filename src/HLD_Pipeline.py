@@ -43,7 +43,19 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-#Use MSER to extract
+def find_text(imgBinary,mask=None):
+    whiteText = cv2.bitwise_and(imgBinary,imgBinary,mask=mask)
+    blackText= cv2.bitwise_and(255-imgBinary,255-imgBinary,mask=mask)
+
+    if(np.bincount(whiteText.flatten())[-1] > np.bincount(blackText.flatten())[-1]):
+        text = whiteText
+    else:
+        text = blackText
+
+    config = ('-l eng --oem 3 --psm 7')
+    cv2.imwrite("test.png",255 - text)
+    return pytesseract.image_to_string(Image.open('test.png'),config=config),text
+
 def extract_hazard_label_text_region(roiBGR,tuner):
 
     minBlobArea = tuner.minBlobArea
@@ -53,24 +65,20 @@ def extract_hazard_label_text_region(roiBGR,tuner):
 
     vThresh = textproc.perform_adaptive_thresh(roiBGR)
     mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,threshBlock,threshC)
-    filtered = textproc.filter_overlaping_regions(mserRegion,10,10)
     filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
     filtered = textproc.filter_regions_by_textHomogeneity(filtered,0.25)
-    filtered = textproc.filter_regions_by_yCluster(filtered,0,vThresh.shape[0])
+    textCluster = textproc.filter_regions_by_yCluster(filtered,0,vThresh.shape[0])
 
-    mask = np.zeros(roiBGR.shape[:-1],np.uint8)
-    cv2.drawContours(mask,filtered,-1,255,-1)
-    textRegion1 = cv2.bitwise_and(vThresh,vThresh,mask=mask)[140:-140,...]
+    textVis = np.zeros(roiBGR.shape[:-1],np.uint8)
+    for cluster in textCluster:
+        mask = np.zeros(roiBGR.shape[:-1],np.uint8)
+        cv2.drawContours(mask,cluster,-1,255,-1)
+        textString, text = find_text(vThresh,mask)
+        textVis = textVis + text
+        print(textString)
 
-    cv2.imwrite("test.png",255 - textRegion1)
-    config = ('-l eng --oem 3 --psm 6')
-    print(pytesseract.image_to_string(Image.open('test.png'),config=config))
-    textRegion2 = cv2.bitwise_and(255-vThresh,255-vThresh,mask=mask)[140:-140,...]
-    cv2.imwrite("test.png",255 - textRegion2)
-    config = ('-l eng --oem 1 --psm 6')
-    print(pytesseract.image_to_string(Image.open('test.png'),config=config))
 
-    return mserRegion, np.vstack((mserVis[140:-140,...],mask[140:-140,...],255 - textRegion1,255 - textRegion2))
+    return mserRegion, np.vstack((mserVis,255 - textVis))
 
 #The main pipe line
 def run_detection(imgpath,display):
@@ -93,9 +101,6 @@ def run_detection(imgpath,display):
     for i, (rectContour,mask) in enumerate(hl_c_m):
         imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
         ROIList.append(imgROI)
-
-        #Lets crop the imgROI into thirds
-
         textROI = imgROI[tuner.textCropY:-tuner.textCropY,tuner.textCropX:-tuner.textCropX,...]
 
 
