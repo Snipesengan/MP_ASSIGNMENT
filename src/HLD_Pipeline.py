@@ -43,9 +43,12 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-def find_text(imgBinary,mask=None):
+def find_text(regions,imgBinary):
+
+    mask = np.zeros(imgBinary.shape,np.uint8)
+    cv2.drawContours(mask,regions,-1,255,-1)
     whiteText = cv2.bitwise_and(imgBinary,imgBinary,mask=mask)
-    blackText= cv2.bitwise_and(255-imgBinary,255-imgBinary,mask=mask)
+    blackText = cv2.bitwise_and(255-imgBinary,255-imgBinary,mask=mask)
 
     if(np.bincount(whiteText.flatten())[-1] > np.bincount(blackText.flatten())[-1]):
         text = whiteText
@@ -54,6 +57,7 @@ def find_text(imgBinary,mask=None):
 
     config = ('-l eng --oem 3 --psm 7')
     cv2.imwrite("test.png",255 - text)
+
     return pytesseract.image_to_string(Image.open('test.png'),config=config),text
 
 def extract_hazard_label_text_region(roiBGR,tuner):
@@ -66,16 +70,16 @@ def extract_hazard_label_text_region(roiBGR,tuner):
     vThresh = textproc.perform_adaptive_thresh(roiBGR)
     mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,threshBlock,threshC)
     filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
-    filtered = textproc.filter_regions_by_textHomogeneity(filtered,0.25)
-    textCluster = textproc.filter_regions_by_yCluster(filtered,0,vThresh.shape[0])
+    clusterOfYRegions = textproc.filter_regions_by_yCluster(filtered,0,vThresh.shape[0])
 
     textVis = np.zeros(roiBGR.shape[:-1],np.uint8)
-    for cluster in textCluster:
-        mask = np.zeros(roiBGR.shape[:-1],np.uint8)
-        cv2.drawContours(mask,cluster,-1,255,-1)
-        textString, text = find_text(vThresh,mask)
-        textVis = textVis + text
-        print(textString)
+    for yRegions in clusterOfYRegions:
+        clusterOfHomoRegions = textproc.filter_regions_by_textHomogeneity(yRegions,2,125,0.25)
+        for homoRegions in clusterOfHomoRegions:
+            textString,vis = find_text(homoRegions,vThresh)
+            textVis = textVis + vis
+            print(textString)
+
 
 
     return mserRegion, np.vstack((mserVis,255 - textVis))

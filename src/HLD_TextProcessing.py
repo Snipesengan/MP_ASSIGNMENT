@@ -50,31 +50,6 @@ def filter_regions_by_eccentricity(regions,maxEccentricity):
 
     return filtered
 
-def filter_overlaping_regions(regions,tolX,tolY):
-    filterOut = []
-
-    for i1,r1 in enumerate(regions):
-        hull1 = cv2.convexHull(r1)
-        (x1,y1),(w1,h1),_ = cv2.minAreaRect(hull1)
-
-        for i2, r2 in enumerate(regions):
-            hull2 = cv2.convexHull(r2)
-            (x2,y2),(w2,h2),_ = cv2.minAreaRect(hull2)
-
-            if abs(x1 - x2) < tolX and abs(y1 - y2) < tolY:
-                a1 = w1 * h1
-                a2 = w2 * h2
-                if i1 != i2:
-                    if (not i1 in filterOut) and a1 > a2:
-                        filterOut.append(i1)
-                    elif (not i2 in filterOut) and a2 > a1:
-                        filterOut.append(i2)
-
-
-    filterIndices = np.delete(np.arange(len(regions),dtype=int),filterOut)
-
-    return [regions[i] for i in filterIndices]
-
 def filter_regions_by_yCluster(regions,minY,maxY):
 
     filtered = []
@@ -96,35 +71,69 @@ def filter_regions_by_yCluster(regions,minY,maxY):
         for r in regions:
             y = r[r[:,1].argmin()][1]
             if y >= dymin and y <= dymax:
-                cluster.append(r)
+                j = 0
+                uniqueRegion = True
+
+                while j <  len(filtered) and uniqueRegion == True:
+                    uniqueRegion = _does_not_overlap(r,filtered[j])
+                    j = j + 1
+
+                if uniqueRegion:
+                    cluster.append(r)
+                    
         filtered.append(cluster)
 
     return filtered
 
-def filter_regions_by_textHomogeneity(regions,dy):
+def filter_regions_by_textHomogeneity(regions,minHeight,maxHeight,dy):
     filtered = []
-    numBins = 100
+    numBins = 14
 
     histArr = []
-    #filter by text size
+
     for r in regions:
         x,y,w,h = cv2.boundingRect(r)
         histArr.append(h)
 
-    hist,binEdge = np.histogram(histArr,bins=numBins)
+    hist,binEdge = np.histogram(histArr,bins=numBins,range=(minHeight,maxHeight))
     for i in np.where(hist >= 3)[0]:
 
-        minHeight = binEdge[i] * (1 - dy)
-        maxHeight = binEdge[i] * (1 + dy)
+        if i - 2 >= 0:
+            minH = binEdge[i-2]
+        else:
+            minH = binEdge[0]
 
-        regionArea = 0
+        if i + 2 < len(binEdge):
+            maxH = binEdge[i + 2]
+        else:
+            maxH = binEdge[-1]
+
+        cluster = []
         for r in regions:
             x,y,w,h = cv2.boundingRect(r)
-            tmpfilter = []
-            if h >= minHeight and h <= maxHeight:
-                regionArea = regionArea + 0
+            if h >= minH and h <= maxH:
+                j = 0
+                uniqueRegion = True
 
-                if not (r in np.array(filtered)):
-                    filtered.append(r)
+                while j <  len(filtered) and uniqueRegion == True:
+                    uniqueRegion = _does_not_overlap(r,filtered[j])
+                    j = j + 1
+
+                if uniqueRegion:
+                    cluster.append(r)
+
+        filtered.append(cluster)
 
     return filtered
+
+def _does_not_overlap(region,regions):
+
+    notOverlap = True
+    (x1,y1),(w1,h1),_ = cv2.minAreaRect(cv2.convexHull(region))
+    for i,r in enumerate(regions):
+        (x2,y2),(w2,h2),_ = cv2.minAreaRect(cv2.convexHull(r))
+
+        if abs(x1 - x2) < 5 and abs(y1 - y2) < 5:
+            notOverlap = False
+
+    return notOverlap
