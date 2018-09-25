@@ -14,6 +14,7 @@ import HLD_Helper as imghelp
 import HLD_TextProcessing as textproc
 import HLD_Transform as transform
 import HLD_Tuner
+import HLD_Misc as imgmisc
 
 def find_region_of_interest(imgray,tuner):
 
@@ -43,48 +44,48 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-def find_text(regions,imgBinary):
+def find_text(textImg):
+    config = ('-l eng --oem 1 --psm 7')
+    cv2.imwrite("test.png",255 - textImg)
 
-    mask = np.zeros(imgBinary.shape,np.uint8)
-    cv2.drawContours(mask,regions,-1,255,-1)
-    whiteText = cv2.bitwise_and(imgBinary,imgBinary,mask=mask)
-    blackText = cv2.bitwise_and(255-imgBinary,255-imgBinary,mask=mask)
-
-    if(np.bincount(whiteText.flatten())[-1] > np.bincount(blackText.flatten())[-1]):
-        text = whiteText
-    else:
-        text = blackText
-
-    config = ('-l eng --oem 3 --psm 7')
-    cv2.imwrite("test.png",255 - text)
-
-    return pytesseract.image_to_string(Image.open('test.png'),config=config),text
+    return pytesseract.image_to_string(Image.open('test.png'),config=config)
 
 def extract_hazard_label_text(roiBGR,tuner):
 
     text = ""
 
-    minBlobArea = tuner.minBlobArea
-    maxBlobArea = tuner.maxBlobArea
-    threshBlock = tuner.threshBlock
-    threshC     = tuner.threshC
+    minBlobArea   = tuner.minBlobArea
+    maxBlobArea   = tuner.maxBlobArea
+    blobDelta    = tuner.blobDelta
+    threshBlock   = tuner.threshBlock
+    threshC       = tuner.threshC
+    minTextHeight = tuner.minTextHeight
+    maxTextHeight = tuner.maxTextHeight
+    textHRes      = tuner.textHRes
+    minY          = tuner.minTextY
+    maxY          = tuner.maxTextY
+    yRes          = tuner.textYRes
 
     vThresh = textproc.perform_adaptive_thresh(roiBGR,threshBlock,threshC)
-    mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea)
+    mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,blobDelta)
     filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
-    clusterOfYRegions = textproc.filter_regions_by_yCluster(filtered,tuner.minTextY,tuner.maxTextY,tuner.textYRes)
+    yCluster = textproc.filter_regions_by_yCluster(filtered,minY,maxY,yRes)
 
-    textVis = np.zeros(roiBGR.shape[:-1],np.uint8)
-    for yRegions in clusterOfYRegions:
-        clusterOfHomoRegions = textproc.filter_regions_by_textHomogeneity(yRegions,tuner.minTextHeight,tuner.maxTextHeight,tuner.textHRes)
-        for homoRegions in clusterOfHomoRegions:
-            textString,vis = find_text(homoRegions,vThresh)
-            textVis = textVis + vis
-            plt.figure()
-            plt.imshow(vis,cmap='gray')
-            text = text + "\n" + textString
+    textVis = np.zeros(vThresh.shape)
+    for regions1 in yCluster:
+        homoCluster = textproc.filter_regions_by_textHomogeneity(regions1,minTextHeight,maxTextHeight,
+                                                                 textHRes)
+        for regions2 in homoCluster:
+            solidity = imgmisc.calculate_solidity(regions2)
+            if solidity > 2:
+                textImg = textproc.space_out_text(vThresh,regions2)
+                textTmp = find_text(textImg)
+                text = text + textTmp
+                textVis = cv2.drawContours(textVis,regions2,-1,255,-1)
 
-    return text, np.vstack((vThresh,mserVis, 255 - textVis))
+        text = text + '\n'
+
+    return text, np.hstack((vThresh,mserVis,textVis))
 
 #The main pipe line
 def run_detection(imgpath,display):
@@ -117,8 +118,6 @@ def run_detection(imgpath,display):
             textVisList.append(textVis)
 
     #now sanity check the text list
-
-
 
 
     if display:

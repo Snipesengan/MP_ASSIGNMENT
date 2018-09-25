@@ -25,17 +25,18 @@ class Tuner:
         self._finalSize   = (500,500)
 
         #Text localization
-        self._minBlobArea   = 75
-        self._maxBlobArea   = 4000
-        self._threshBlock   = 25
-        self._threshC       = 5
+        self._minBlobArea   = 50
+        self._maxBlobArea   = 5000
+        self._blobDelta     = 250
+        self._threshBlock   = 55
+        self._threshC       = 3
         self._maxE          = 0.98
         self._minTextY      = 150
         self._maxTextY      = 500 - 150
-        self._textYRes      = 5
-        self._minTextHeight = 20
-        self._maxTextHeight = 150
-        self._textHRes      = 14
+        self._textYRes      = 40
+        self._minTextHeight = 10
+        self._maxTextHeight = 170
+        self._textHRes      = 27
 
     #Lets make setter and getters for these things lmao, python sucks at OO
     def medianKSize():
@@ -192,6 +193,17 @@ class Tuner:
             del self._maxBlobArea
         return locals()
     maxBlobArea = property(**maxBlobArea())
+
+    def blobDelta():
+        doc = "The _blobDelta property."
+        def fget(self):
+            return self._blobDelta
+        def fset(self, value):
+            self._blobDelta = value
+        def fdel(self):
+            del self._blobDelta
+        return locals()
+    blobDelta = property(**blobDelta())
 
     def threshBlock():
         doc = "The_threshBlock property."

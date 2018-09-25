@@ -29,3 +29,9 @@ def perspective_trapezoid_to_rect(imgBGR,rectContour,finalSize,mask=None):
     des = cv2.warpPerspective(imgROI,M,finalSize)
 
     return des
+
+def translate(img,dx,dy,shape):
+    M = np.float32([[1,0,dx],[0,1,dy]])
+    dst = cv2.warpAffine(img,M,(shape[1],shape[0]))
+
+    return dst
