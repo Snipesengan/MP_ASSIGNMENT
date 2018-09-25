@@ -30,7 +30,6 @@ def find_MSER(imgray,minArea,maxArea,delta):
 
 def space_out_text(textImg,textRegions):
 
-
     #sort textRegions by x position
     textRegions.sort(key = lambda r: cv2.boundingRect(r)[0])
 
@@ -40,26 +39,39 @@ def space_out_text(textImg,textRegions):
     #calculate the average width of textRegions
     avgWidth = sum([cv2.boundingRect(r)[3] for r in textRegions])/len(textRegions)
     outImg = np.zeros((500,int(((maxX - minX) + avgWidth*len(textRegions)) * 2)))
+    wordMask = np.zeros(textImg.shape,np.uint8)
+    cv2.drawContours(wordMask,textRegions,0,255,-1)
+    textColor = detect_text_color(textImg,wordMask)
 
     #space each region by the average width of the letters
     for i,r in enumerate(textRegions):
         mask = np.zeros(textImg.shape,np.uint8)
         cv2.drawContours(mask,[r],0,255,-1)
-        whiteText = cv2.bitwise_and(textImg,textImg,mask=mask)
-        blackText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=mask)
-
-        if(np.bincount(whiteText.flatten(),minlength=2)[-1] > np.bincount(blackText.flatten(),minlength=2)[-1]):
-            imgText = whiteText
-        else:
-            imgText = blackText
-
+        if textColor == 'white':
+            imgText = cv2.bitwise_and(textImg,textImg,mask=mask)
+        elif textColor == 'black':
+            imgText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=mask)
         #Translate the image
-        outImg = outImg + transform.translate(imgText,i*avgWidth*0.5,0,outImg.shape)
+        outImg = outImg + transform.translate(imgText,i*avgWidth*0.3,0,outImg.shape)
 
     #translate final image back
     outImg = transform.translate(outImg,-minX + 10,0,outImg.shape)
 
     return outImg
+
+def detect_text_color(textImg,mask):
+    whiteText = cv2.bitwise_and(textImg,textImg,mask=mask)
+    blackText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=mask)
+    #morph close each to better detect
+    wclosing = cv2.erode(whiteText,np.ones((7,7),np.uint8),iterations = 1)
+    bclosing = cv2.erode(blackText,np.ones((7,7),np.uint8),iterations = 1)
+
+    if(np.bincount(wclosing.flatten(),minlength=2)[-1] > np.bincount(bclosing.flatten(),minlength=2)[-1]):
+        imgText = 'white'
+    else:
+        imgText = 'black'
+
+    return imgText
 
 def perform_adaptive_thresh(imgBGR,threshBlock,threshC):
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
@@ -81,7 +93,17 @@ def filter_regions_by_eccentricity(regions,maxEccentricity):
         (_,_),(_,_),angle = cv2.minAreaRect(r)
         eccentricty = (1 - MA/ma)**(0.5)
 
-        if eccentricty < maxEccentricity and (abs(angle - 45) > 30 != abs(angle - (-45)) > 30):
+        if eccentricty < maxEccentricity and (abs(angle - 45) > 15 != abs(angle - (-45)) > 15):
+            filtered.append(r)
+
+    return filtered
+
+def filter_regions_by_location(regions,rect):
+    x1,y1,w1,h1 = rect
+    filtered = []
+    for r in regions:
+        (x,y),_ = cv2.minEnclosingCircle(r)
+        if (x >= x1 and x <= (x1 + w1)) and (y >= y1 and y <= (y1 + h1)):
             filtered.append(r)
 
     return filtered

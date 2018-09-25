@@ -44,8 +44,7 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-def find_text(textImg):
-    config = ('-l eng --oem 1 --psm 7')
+def find_text(textImg,config=('-l eng --oem 1 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')):
     cv2.imwrite("test.png",255 - textImg)
 
     return pytesseract.image_to_string(Image.open('test.png'),config=config)
@@ -65,12 +64,19 @@ def extract_hazard_label_text(roiBGR,tuner):
     minY          = tuner.minTextY
     maxY          = tuner.maxTextY
     yRes          = tuner.textYRes
+    classx        = 200
+    classy        = 340
+    classw        = 100
+    classh        = 100
 
-    vThresh = textproc.perform_adaptive_thresh(roiBGR,threshBlock,threshC)
+    blur    = cv2.GaussianBlur(roiBGR,(7,7),0)
+    vThresh = textproc.perform_adaptive_thresh(blur,threshBlock,threshC)
     mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,blobDelta)
     filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
-    yCluster = textproc.filter_regions_by_yCluster(filtered,minY,maxY,yRes)
 
+    #For label
+    #Cluster the regions together based on height and y position
+    yCluster = textproc.filter_regions_by_yCluster(filtered,minY,maxY,yRes)
     textVis = np.zeros(vThresh.shape)
     for regions1 in yCluster:
         homoCluster = textproc.filter_regions_by_textHomogeneity(regions1,minTextHeight,maxTextHeight,
@@ -85,7 +91,21 @@ def extract_hazard_label_text(roiBGR,tuner):
 
         text = text + '\n'
 
-    return text, np.hstack((vThresh,mserVis,textVis))
+    #For class number
+    classNo = None
+    rect = (classx,classy,classw,classh)
+    classRegions = textproc.filter_regions_by_location(filtered,rect)
+    mask = imgmisc.get_mask(classRegions,(500,500))
+    classColor = textproc.detect_text_color(vThresh,mask)
+
+    if classColor == 'white':
+        classImg = cv2.bitwise_and(vThresh,vThresh,mask=mask)
+    elif classColor == 'black':
+        classImg = cv2.bitwise_and(255 - vThresh,255 - vThresh,mask=mask)
+
+    classNo  = find_text(classImg[classy:classy+classh,classx:classx+classw],
+                         config = ('-l eng --oem 1 --psm 10 digits'))
+    return text,classNo,np.hstack((vThresh,mserVis,textVis+classImg))
 
 #The main pipe line
 def run_detection(imgpath,display):
@@ -109,17 +129,15 @@ def run_detection(imgpath,display):
         imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
         ROIList.append(imgROI)
 
-        text,textVis = extract_hazard_label_text(imgROI,tuner)
-        print(text)
-        textFoundList.append(text)
+        label,classNo,textVis = extract_hazard_label_text(imgROI,tuner)
+        print(label,classNo)
+        textFoundList.append(label)
 
         if display:
             roiVisList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
             textVisList.append(textVis)
 
     #now sanity check the text list
-
-
     if display:
         plt.figure("Hazard Label Detection")
         plt.subplot(311)

@@ -72,7 +72,6 @@ def filter_overlaping_contour(contours):
 
 def find_contours(imgray,cannyMin,cannyMax,morphKernel,mask=None):
 
-
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
     canny = cv2.Canny(imgray,cannyMin,cannyMax)
     closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, morphKernel)

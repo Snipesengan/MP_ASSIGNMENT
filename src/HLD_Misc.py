@@ -8,11 +8,16 @@ import sys
 import math
 
 def display_region(regions,dim):
-    mask = np.zeros(dim)
+    mask = np.zeros(dim,np.uint8)
     cv2.drawContours(mask,regions,-1,255,1)
     plt.figure("Regions")
     plt.imshow(mask,cmap='gray')
     plt.show()
+
+def get_mask(regions,shape):
+    mask = np.zeros(shape,np.uint8)
+    cv2.drawContours(mask,regions,-1,255,1)
+    return mask
 
 def calculate_solidity(regions):
     left = []
