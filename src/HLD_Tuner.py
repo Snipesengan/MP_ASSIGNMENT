@@ -25,14 +25,17 @@ class Tuner:
         self._finalSize   = (500,500)
 
         #Text localization
-        self._textCropX   = 25
-        self._textCropY   = 10
-        self._minBlobArea = 75
-        self._maxBlobArea = 4000
-        self._threshBlock = 33
-        self._threshC     = 2
-        self._maxE        = 0.98
+        self._minBlobArea   = 75
+        self._maxBlobArea   = 4000
+        self._threshBlock   = 33
+        self._threshC       = 2
+        self._maxE          = 0.98
+        self._minTextY      = 150
+        self._maxTextY      = 500 - 150
+        self._textYRes      = 20
         self._minTextHeight = 20
+        self._maxTextHeight = 150
+        self._textHRes      = 14
 
     #Lets make setter and getters for these things lmao, python sucks at OO
     def medianKSize():
@@ -146,27 +149,27 @@ class Tuner:
         return locals()
     finalSize = property(**finalSize())
 
-    def textCropY():
-        doc = "The textCropY property."
+    def minTextY():
+        doc = "The _minTextY property."
         def fget(self):
-            return self._textCropY
+            return self._minTextY
         def fset(self, value):
-            self._textCropY = value
+            self._minTextY = value
         def fdel(self):
-            del self._textCropY
+            del self._minTextY
         return locals()
-    textCropY = property(**textCropY())
+    minTextY = property(**minTextY())
 
-    def textCropX():
-        doc = "The textCropX property."
+    def maxTextY():
+        doc = "The_maxTextY property."
         def fget(self):
-            return self._textCropX
+            return self._maxTextY
         def fset(self, value):
-            self._textCropX = value
+            self._maxTextY = value
         def fdel(self):
-            del self._textCropX
+            del self._maxTextY
         return locals()
-    textCropX = property(**textCropX())
+    maxTextY = property(**maxTextY())
 
     def minBlobArea():
         doc = "The _minBlobArea property."
@@ -233,3 +236,36 @@ class Tuner:
             del self._minTextHeight
         return locals()
     minTextHeight = property(**minTextHeight())
+
+    def maxTextHeight():
+        doc = "TheminTextHeight property."
+        def fget(self):
+            return self._maxTextHeight
+        def fset(self, value):
+            self._maxTextHeight = value
+        def fdel(self):
+            del self._maxTextHeight
+        return locals()
+    maxTextHeight = property(**maxTextHeight())
+
+    def textYRes():
+        doc = "The_textYRes property."
+        def fget(self):
+            return self._textYRes
+        def fset(self, value):
+            self._textYRes = value
+        def fdel(self):
+            del self._textYRes
+        return locals()
+    textYRes = property(**textYRes())
+
+    def textHRes():
+        doc = "The_textHRes property."
+        def fget(self):
+            return self._textHRes
+        def fset(self, value):
+            self._textHRes = value
+        def fdel(self):
+            del self._textHRes
+        return locals()
+    textHRes = property(**textHRes())

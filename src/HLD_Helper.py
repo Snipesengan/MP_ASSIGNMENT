@@ -15,8 +15,6 @@ COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,70,50]),np.array([180,255
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,15])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,200]),np.array([180,70,255])
 
-MIN_RECT_AREA  = 10000 #TODO: Adjust this dynamically
-
 #This file contains useful functions, essentially wrapper for
 #functions that already exists in opencv. However this is so
 #that thresholds can be set easier this way..

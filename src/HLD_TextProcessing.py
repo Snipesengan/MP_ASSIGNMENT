@@ -50,10 +50,10 @@ def filter_regions_by_eccentricity(regions,maxEccentricity):
 
     return filtered
 
-def filter_regions_by_yCluster(regions,minY,maxY):
+def filter_regions_by_yCluster(regions,minY,maxY,res):
 
     filtered = []
-    numBins = 40
+    numBins = res
 
     histArr = []
 
@@ -62,7 +62,6 @@ def filter_regions_by_yCluster(regions,minY,maxY):
         histArr.append(y)
 
     hist,binEdge = np.histogram(histArr,bins=numBins,range=(minY,maxY))
-
     for i in np.where(hist >= 3)[0]:
         dymin = binEdge[i]
         dymax = binEdge[i + 1]
@@ -80,14 +79,14 @@ def filter_regions_by_yCluster(regions,minY,maxY):
 
                 if uniqueRegion:
                     cluster.append(r)
-                    
+
         filtered.append(cluster)
 
     return filtered
 
-def filter_regions_by_textHomogeneity(regions,minHeight,maxHeight,dy):
+def filter_regions_by_textHomogeneity(regions,minHeight,maxHeight,res):
     filtered = []
-    numBins = 14
+    numBins = res
 
     histArr = []
 

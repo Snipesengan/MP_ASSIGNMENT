@@ -60,7 +60,9 @@ def find_text(regions,imgBinary):
 
     return pytesseract.image_to_string(Image.open('test.png'),config=config),text
 
-def extract_hazard_label_text_region(roiBGR,tuner):
+def extract_hazard_label_text(roiBGR,tuner):
+
+    text = ""
 
     minBlobArea = tuner.minBlobArea
     maxBlobArea = tuner.maxBlobArea
@@ -70,29 +72,29 @@ def extract_hazard_label_text_region(roiBGR,tuner):
     vThresh = textproc.perform_adaptive_thresh(roiBGR)
     mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,threshBlock,threshC)
     filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
-    clusterOfYRegions = textproc.filter_regions_by_yCluster(filtered,0,vThresh.shape[0])
+    clusterOfYRegions = textproc.filter_regions_by_yCluster(filtered,tuner.minTextY,tuner.maxTextY,tuner.textYRes)
 
     textVis = np.zeros(roiBGR.shape[:-1],np.uint8)
     for yRegions in clusterOfYRegions:
-        clusterOfHomoRegions = textproc.filter_regions_by_textHomogeneity(yRegions,2,125,0.25)
+        clusterOfHomoRegions = textproc.filter_regions_by_textHomogeneity(yRegions,tuner.minTextHeight,tuner.maxTextHeight,tuner.textHRes)
         for homoRegions in clusterOfHomoRegions:
             textString,vis = find_text(homoRegions,vThresh)
+            plt.imshow(vis,cmap='gray')
+            plt.show()
             textVis = textVis + vis
-            print(textString)
+            text = text + "\n" + textString
 
-
-
-    return mserRegion, np.vstack((mserVis,255 - textVis))
+    return text, np.vstack((mserVis, 255 - textVis))
 
 #The main pipe line
 def run_detection(imgpath,display):
 
     ROIList = []
-    mserRegionList = []
+    textFoundList = []
     tuner = HLD_Tuner.Tuner()
 
     if display:
-        mserVisList = []
+        textVisList = []
         roiVisList = []
 
     imgBGR = cv2.imread(imgpath)
@@ -105,14 +107,19 @@ def run_detection(imgpath,display):
     for i, (rectContour,mask) in enumerate(hl_c_m):
         imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
         ROIList.append(imgROI)
-        textROI = imgROI[tuner.textCropY:-tuner.textCropY,tuner.textCropX:-tuner.textCropX,...]
 
+        text,textVis = extract_hazard_label_text(imgROI,tuner)
+        print(text)
+        textFoundList.append(text)
 
-        mserRegion,textROIVis = extract_hazard_label_text_region(textROI,tuner)
-        mserRegionList.append(mserRegion)
         if display:
             roiVisList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
-            mserVisList.append(textROIVis)
+            textVisList.append(textVis)
+
+    #now sanity check the text list
+
+
+
 
     if display:
         plt.figure("Hazard Label Detection")
@@ -122,7 +129,7 @@ def run_detection(imgpath,display):
             plt.subplot(312)
             plt.imshow(np.hstack(tuple(roiVisList)))
             plt.subplot(313)
-            plt.imshow(np.hstack(tuple(mserVisList)),cmap='gray')
+            plt.imshow(np.hstack(tuple(textVisList)),cmap='gray')
         else:
             print("No ROI found")
 
