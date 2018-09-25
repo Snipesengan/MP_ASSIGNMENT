@@ -4,13 +4,13 @@ file="20180920/SetB"
 file="res/SetB"
 file="res/SetC"
 file="res/SetD"
-file="res/SetA"
 file="SampleData-20180826/20180826/SetD"
-file="SampleData-20180826/20180826/SetB"
 file="SampleData-20180826/20180826/SetC"
+file="SampleData-20180826/20180826/SetB"
+file="res/SetA"
 
 for image in $(ls $file); do
     echo $image
-    python3 src/HLD_Pipeline.py $file'/'$image -display
+    python3 src/HLD_Pipeline.py $file'/'$image
     echo
 done

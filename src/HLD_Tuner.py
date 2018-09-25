@@ -28,12 +28,12 @@ class Tuner:
         self._minBlobArea   = 50
         self._maxBlobArea   = 5000
         self._blobDelta     = 250
-        self._threshBlock   = 19
+        self._threshBlock   = 35
         self._threshC       = 2
         self._maxE          = 0.98
         self._minTextY      = 150
         self._maxTextY      = 500 - 150
-        self._textYRes      = 17
+        self._textYRes      = 20
         self._minTextHeight = 10
         self._maxTextHeight = 170
         self._textHRes      = 27

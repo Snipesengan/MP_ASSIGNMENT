@@ -44,7 +44,7 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-def find_text(textImg,config=('-l eng --oem 1 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')):
+def find_text(textImg,config=('-l eng --oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')):
     cv2.imwrite("test.png",255 - textImg)
 
     return pytesseract.image_to_string(Image.open('test.png'),config=config)
@@ -104,7 +104,8 @@ def extract_hazard_label_text(roiBGR,tuner):
         classImg = cv2.bitwise_and(255 - vThresh,255 - vThresh,mask=mask)
 
     classNo  = find_text(classImg[classy:classy+classh,classx:classx+classw],
-                         config = ('-l eng --oem 1 --psm 10 digits'))
+                         config = ('-l eng --oem 3 --psm 6 digits'))
+
     return text,classNo,np.hstack((vThresh,mserVis,textVis+classImg))
 
 #The main pipe line
@@ -130,7 +131,8 @@ def run_detection(imgpath,display):
         ROIList.append(imgROI)
 
         label,classNo,textVis = extract_hazard_label_text(imgROI,tuner)
-        print(label,classNo)
+        approxlabel = textproc.approximate_label(label,"dictionary.txt")
+        print(approxlabel,classNo)
         textFoundList.append(label)
 
         if display:

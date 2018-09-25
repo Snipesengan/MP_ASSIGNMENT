@@ -4,8 +4,6 @@ import tkinter
 import matplotlib.pyplot as plt
 import math
 
-DEST_SIZE = (500,500) #size fo the final image after perspective transform
-
 def perspective_trapezoid_to_rect(imgBGR,rectContour,finalSize,mask=None):
 
     imgROI = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
@@ -20,10 +18,10 @@ def perspective_trapezoid_to_rect(imgBGR,rectContour,finalSize,mask=None):
                            [topmost[0],topmost[1]],
                            [rightmost[0],rightmost[1]]])
 
-    toPoints = np.float32([[DEST_SIZE[0]/2,DEST_SIZE[1]],
-                           [0,DEST_SIZE[1]/2],
-                           [DEST_SIZE[0]/2,0],
-                           [DEST_SIZE[0],DEST_SIZE[1]/2]])
+    toPoints = np.float32([[finalSize[0]/2,finalSize[1]],
+                           [0,finalSize[1]/2],
+                           [finalSize[0]/2,0],
+                           [finalSize[0],finalSize[1]/2]])
 
     M = cv2.getPerspectiveTransform(fromPoints,toPoints)
     des = cv2.warpPerspective(imgROI,M,finalSize)

@@ -6,6 +6,38 @@ import math
 import HLD_Misc as imgmisc
 import HLD_Transform as transform
 
+def approximate_label(text,wordFile):
+
+    outText = ""
+    match   = []
+    words = [w for w in text.split() if len(w) >= 3]
+    f = open(wordFile)
+    data = f.read()
+    expectedWords = data.split('\n')
+    for word in words:
+        lcs = set()
+        word = word.upper()
+        noMatch = False
+        while len(word) >= 3 and noMatch == False:
+            matches = []
+            for expectword in expectedWords:
+                lcs = find_LCS(expectword,word)
+                if len(lcs) > 0:
+                    substring  = list(lcs).pop()
+                    percentMatch = 0 if len(expectword) == 0 else len(substring)/len(expectword)
+                    if percentMatch > 0.6:
+                        matches.append((substring,expectword))
+
+            if len(matches) > 0:
+                matches.sort(key = lambda x: len(x[0]),reverse=True)
+                longestSubstring, closestMatch = matches[0]
+                outText = outText + closestMatch + ' '
+                word = word.replace(longestSubstring,'')
+            else:
+                noMatch = True
+
+    return outText
+
 def find_MSER(imgray,minArea,maxArea,delta):
 
     mser = cv2.MSER_create()
@@ -52,7 +84,7 @@ def space_out_text(textImg,textRegions):
         elif textColor == 'black':
             imgText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=mask)
         #Translate the image
-        outImg = outImg + transform.translate(imgText,i*avgWidth*0.3,0,outImg.shape)
+        outImg = outImg + transform.translate(imgText,i*avgWidth*0.1,0,outImg.shape)
 
     #translate final image back
     outImg = transform.translate(outImg,-minX + 10,0,outImg.shape)
@@ -130,9 +162,9 @@ def filter_regions_by_yCluster(regions,minY,maxY,res):
         if hist[histIdx] >= 3:
             clusters[histIdx].append(r)
 
-    return [c for c in clusters if len(c) > 0 ]
+    cluster = [c for c in clusters if len(c) > 0]
 
-    return filtered
+    return cluster
 
 def filter_regions_by_textHomogeneity(regions,minHeight,maxHeight,res):
 
@@ -184,3 +216,23 @@ def filter_overlapping_regions(regions):
             filtered.append(r1)
 
     return filtered
+
+def find_LCS(S,T):
+    m = len(S)
+    n = len(T)
+    counter = [[0]*(n+1) for x in range(m+1)]
+    longest = 0
+    lcs_set = set()
+    for i in range(m):
+        for j in range(n):
+            if S[i] == T[j]:
+                c = counter[i][j] + 1
+                counter[i+1][j+1] = c
+                if c > longest:
+                    lcs_set = set()
+                    longest = c
+                    lcs_set.add(S[i-c+1:i+1])
+                elif c == longest:
+                    lcs_set.add(S[i-c+1:i+1])
+
+    return lcs_set
