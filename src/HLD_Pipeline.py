@@ -69,8 +69,8 @@ def extract_hazard_label_text(roiBGR,tuner):
     threshBlock = tuner.threshBlock
     threshC     = tuner.threshC
 
-    vThresh = textproc.perform_adaptive_thresh(roiBGR)
-    mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,threshBlock,threshC)
+    vThresh = textproc.perform_adaptive_thresh(roiBGR,threshBlock,threshC)
+    mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea)
     filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
     clusterOfYRegions = textproc.filter_regions_by_yCluster(filtered,tuner.minTextY,tuner.maxTextY,tuner.textYRes)
 
@@ -79,12 +79,12 @@ def extract_hazard_label_text(roiBGR,tuner):
         clusterOfHomoRegions = textproc.filter_regions_by_textHomogeneity(yRegions,tuner.minTextHeight,tuner.maxTextHeight,tuner.textHRes)
         for homoRegions in clusterOfHomoRegions:
             textString,vis = find_text(homoRegions,vThresh)
-            plt.imshow(vis,cmap='gray')
-            plt.show()
             textVis = textVis + vis
+            plt.figure()
+            plt.imshow(vis,cmap='gray')
             text = text + "\n" + textString
 
-    return text, np.vstack((mserVis, 255 - textVis))
+    return text, np.vstack((vThresh,mserVis, 255 - textVis))
 
 #The main pipe line
 def run_detection(imgpath,display):

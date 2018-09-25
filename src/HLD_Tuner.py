@@ -27,12 +27,12 @@ class Tuner:
         #Text localization
         self._minBlobArea   = 75
         self._maxBlobArea   = 4000
-        self._threshBlock   = 33
-        self._threshC       = 2
+        self._threshBlock   = 25
+        self._threshC       = 5
         self._maxE          = 0.98
         self._minTextY      = 150
         self._maxTextY      = 500 - 150
-        self._textYRes      = 20
+        self._textYRes      = 5
         self._minTextHeight = 20
         self._maxTextHeight = 150
         self._textHRes      = 14

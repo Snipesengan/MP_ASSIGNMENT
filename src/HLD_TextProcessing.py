@@ -4,7 +4,7 @@ import tkinter
 import matplotlib.pyplot as plt
 import math
 
-def find_MSER(imgray,minArea,maxArea,blockSize,C):
+def find_MSER(imgray,minArea,maxArea):
 
     mser = cv2.MSER_create()
     mser.setMaxArea(maxArea)
@@ -26,12 +26,13 @@ def find_MSER(imgray,minArea,maxArea,blockSize,C):
 
     return areaFilter,vis
 
-def perform_adaptive_thresh(imgBGR):
+def perform_adaptive_thresh(imgBGR,threshBlock,threshC):
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
 
     h,s,v = cv2.split(imgHSV)
     #Adaptive gaussian on v channel
-    vThresh = cv2.adaptiveThreshold(v,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,33,2)
+    vThresh = cv2.adaptiveThreshold(v,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
+                                    threshBlock,threshC)
 
     return vThresh
 
