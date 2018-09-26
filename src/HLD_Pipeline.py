@@ -44,7 +44,7 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-def find_text(textImg,config=('-l eng --oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')):
+def find_text(textImg,config='-l eng --oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
     cv2.imwrite("test.png",255 - textImg)
 
     return pytesseract.image_to_string(Image.open('test.png'),config=config)
@@ -55,7 +55,7 @@ def extract_hazard_label_text(roiBGR,tuner):
 
     minBlobArea   = tuner.minBlobArea
     maxBlobArea   = tuner.maxBlobArea
-    blobDelta    = tuner.blobDelta
+    blobDelta     = tuner.blobDelta
     threshBlock   = tuner.threshBlock
     threshC       = tuner.threshC
     minTextHeight = tuner.minTextHeight
@@ -82,12 +82,10 @@ def extract_hazard_label_text(roiBGR,tuner):
         homoCluster = textproc.filter_regions_by_textHomogeneity(regions1,minTextHeight,maxTextHeight,
                                                                  textHRes)
         for regions2 in homoCluster:
-            solidity = imgmisc.calculate_solidity(regions2)
-            if solidity > 2:
-                textImg = textproc.space_out_text(vThresh,regions2)
-                textTmp = find_text(textImg)
-                text = text + textTmp
-                textVis = cv2.drawContours(textVis,regions2,-1,255,-1)
+            textImg = textproc.space_out_text(vThresh,regions2,50)
+            textTmp = find_text(textImg)
+            text = text + textTmp
+            textVis = cv2.drawContours(textVis,regions2,-1,255,-1)
 
         text = text + '\n'
 
@@ -95,13 +93,8 @@ def extract_hazard_label_text(roiBGR,tuner):
     classNo = None
     rect = (classx,classy,classw,classh)
     classRegions = textproc.filter_regions_by_location(filtered,rect)
-    mask = imgmisc.get_mask(classRegions,(500,500))
-    classColor = textproc.detect_text_color(vThresh,mask)
-
-    if classColor == 'white':
-        classImg = cv2.bitwise_and(vThresh,vThresh,mask=mask)
-    elif classColor == 'black':
-        classImg = cv2.bitwise_and(255 - vThresh,255 - vThresh,mask=mask)
+    classColor   = textproc.detect_text_color(vThresh,classRegions)
+    classImg     = textproc.apply_regions_mask(vThresh,classRegions,invert=(classColor=='black'))
 
     classNo  = find_text(classImg[classy:classy+classh,classx:classx+classw],
                          config = ('-l eng --oem 3 --psm 6 digits'))

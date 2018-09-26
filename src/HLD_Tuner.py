@@ -36,7 +36,7 @@ class Tuner:
         self._textYRes      = 20
         self._minTextHeight = 10
         self._maxTextHeight = 170
-        self._textHRes      = 27
+        self._textHRes      = 13
 
     #Lets make setter and getters for these things lmao, python sucks at OO
     def medianKSize():

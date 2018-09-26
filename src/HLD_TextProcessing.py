@@ -25,7 +25,7 @@ def approximate_label(text,wordFile):
                 if len(lcs) > 0:
                     substring  = list(lcs).pop()
                     percentMatch = 0 if len(expectword) == 0 else len(substring)/len(expectword)
-                    if percentMatch > 0.6:
+                    if percentMatch > 0.8:
                         matches.append((substring,expectword))
 
             if len(matches) > 0:
@@ -35,6 +35,9 @@ def approximate_label(text,wordFile):
                 word = word.replace(longestSubstring,'')
             else:
                 noMatch = True
+
+    if outText == "":
+        outText = text
 
     return outText
 
@@ -60,7 +63,7 @@ def find_MSER(imgray,minArea,maxArea,delta):
 
     return areaFilter,vis
 
-def space_out_text(textImg,textRegions):
+def space_out_text(textImg,textRegions,spaceWidth):
 
     #sort textRegions by x position
     textRegions.sort(key = lambda r: cv2.boundingRect(r)[0])
@@ -70,30 +73,40 @@ def space_out_text(textImg,textRegions):
 
     #calculate the average width of textRegions
     avgWidth = sum([cv2.boundingRect(r)[3] for r in textRegions])/len(textRegions)
-    outImg = np.zeros((500,int(((maxX - minX) + avgWidth*len(textRegions)) * 2)))
-    wordMask = np.zeros(textImg.shape,np.uint8)
-    cv2.drawContours(wordMask,textRegions,0,255,-1)
-    textColor = detect_text_color(textImg,wordMask)
+    outImg = np.zeros((500,int(((maxX - minX) + avgWidth*len(textRegions))*2)))
+    textColor = detect_text_color(textImg,textRegions)
 
     #space each region by the average width of the letters
+    currX = cv2.boundingRect(textRegions[0])[0] + 20
     for i,r in enumerate(textRegions):
-        mask = np.zeros(textImg.shape,np.uint8)
-        cv2.drawContours(mask,[r],0,255,-1)
-        if textColor == 'white':
-            imgText = cv2.bitwise_and(textImg,textImg,mask=mask)
-        elif textColor == 'black':
-            imgText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=mask)
-        #Translate the image
-        outImg = outImg + transform.translate(imgText,i*avgWidth*0.1,0,outImg.shape)
+        imgText = apply_regions_mask(textImg,[r],invert=(textColor=='black'))
+        x,_,width,_ = cv2.boundingRect(r)
+
+        outImg = outImg + transform.translate(imgText,currX - x,0,outImg.shape)
+        currX = currX + width + spaceWidth
 
     #translate final image back
     outImg = transform.translate(outImg,-minX + 10,0,outImg.shape)
+    plt.imshow(outImg,cmap='gray')
+    plt.show()
+    return outImg
+
+def apply_regions_mask(image,regions,invert=False):
+    mask = np.zeros(image.shape,np.uint8)
+    cv2.drawContours(mask,regions,0,255,-1)
+    outImg = mask
+    if invert:
+        outImg = cv2.bitwise_and(255 - image,255 - image,mask=mask)
+    else:
+        outimg = cv2.bitwise_and(image,image,mask=mask)
 
     return outImg
 
-def detect_text_color(textImg,mask):
-    whiteText = cv2.bitwise_and(textImg,textImg,mask=mask)
-    blackText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=mask)
+def detect_text_color(textImg,textRegions):
+    wordMask = np.zeros(textImg.shape,np.uint8)
+    cv2.drawContours(wordMask,textRegions,0,255,-1)
+    whiteText = cv2.bitwise_and(textImg,textImg,mask=wordMask)
+    blackText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=wordMask)
     #morph close each to better detect
     wclosing = cv2.erode(whiteText,np.ones((7,7),np.uint8),iterations = 1)
     bclosing = cv2.erode(blackText,np.ones((7,7),np.uint8),iterations = 1)
