@@ -9,9 +9,11 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pytesseract
 import sys
+import math
 
 import HLD_Helper as imghelp
 import HLD_TextProcessing as textproc
+import HLD_RegionsProc as regionproc
 import HLD_Transform as transform
 import HLD_Tuner
 import HLD_Misc as imgmisc
@@ -52,54 +54,38 @@ def find_text(textImg,config='-l eng --oem 3 --psm 7 -c tessedit_char_whitelist=
 def extract_hazard_label_text(roiBGR,tuner):
 
     text = ""
+    textVis = []
 
-    minBlobArea   = tuner.minBlobArea
-    maxBlobArea   = tuner.maxBlobArea
-    blobDelta     = tuner.blobDelta
-    threshBlock   = tuner.threshBlock
-    threshC       = tuner.threshC
-    minTextHeight = tuner.minTextHeight
-    maxTextHeight = tuner.maxTextHeight
-    textHRes      = tuner.textHRes
-    minY          = tuner.minTextY
-    maxY          = tuner.maxTextY
-    yRes          = tuner.textYRes
-    classx        = 200
-    classy        = 340
-    classw        = 100
-    classh        = 100
+    vThresh    = imgmisc.perform_adaptive_thresh(roiBGR,tuner.threshBlock,tuner.threshC)
+    mserRegion = regionproc.find_MSER(vThresh,tuner.minBlobArea,tuner.maxBlobArea,tuner.blobDelta)
+    filtered   = regionproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
+    filtered   = regionproc.filter_overlapping_regions(filtered)
 
-    blur    = cv2.GaussianBlur(roiBGR,(7,7),0)
-    vThresh = textproc.perform_adaptive_thresh(blur,threshBlock,threshC)
-    mserRegion,mserVis = textproc.find_MSER(vThresh,minBlobArea,maxBlobArea,blobDelta)
-    filtered = textproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
-
-    #For label
-    #Cluster the regions together based on height and y position
-    yCluster = textproc.filter_regions_by_yCluster(filtered,minY,maxY,yRes)
-    textVis = np.zeros(vThresh.shape)
-    for regions1 in yCluster:
-        homoCluster = textproc.filter_regions_by_textHomogeneity(regions1,minTextHeight,maxTextHeight,
-                                                                 textHRes)
-        for regions2 in homoCluster:
-            textImg = textproc.space_out_text(vThresh,regions2,50)
-            textTmp = find_text(textImg)
-            text = text + textTmp
-            textVis = cv2.drawContours(textVis,regions2,-1,255,-1)
-
+    regionCluster = regionproc.approx_homogenous_regions_chain(filtered,3,0.2,0.2)
+    #sort left to right
+    regionCluster = regionproc.sort_left_right(regionCluster)
+    for regions in regionCluster:
+        space = sum([cv2.boundingRect(r)[2] for r in regions])/len(regions)
+        textImg = textproc.space_out_text(roiBGR,regions,space)
+        textTmp = find_text(textImg)
+        text = text + textTmp
+        textVis.append((textImg,textTmp))
         text = text + '\n'
 
-    #For class number
-    classNo = None
-    rect = (classx,classy,classw,classh)
-    classRegions = textproc.filter_regions_by_location(filtered,rect)
-    classColor   = textproc.detect_text_color(vThresh,classRegions)
-    classImg     = textproc.apply_regions_mask(vThresh,classRegions,invert=(classColor=='black'))
 
-    classNo  = find_text(classImg[classy:classy+classh,classx:classx+classw],
-                         config = ('-l eng --oem 3 --psm 6 digits'))
 
-    return text,classNo,np.hstack((vThresh,mserVis,textVis+classImg))
+
+
+    #for visual stuff
+    vis = cv2.cvtColor(vThresh,cv2.COLOR_GRAY2RGB)
+    cv2.drawContours(vis,[cv2.convexHull(r) for r in mserRegion],-1,(0,255,0),1)
+    cv2.drawContours(vis,[cv2.convexHull(r) for r in filtered],-1,(0,0,255),1)
+    cv2.drawContours(vis,[cv2.convexHull(r) for r in filtered],-1,(255,0,0),1)
+    for img,txt in textVis:
+        plt.figure(txt)
+        plt.imshow(img,cmap='gray')
+
+    return ' '.join(text.split()),vis
 
 #The main pipe line
 def run_detection(imgpath,display):
@@ -122,10 +108,9 @@ def run_detection(imgpath,display):
     for i, (rectContour,mask) in enumerate(hl_c_m):
         imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
         ROIList.append(imgROI)
-
-        label,classNo,textVis = extract_hazard_label_text(imgROI,tuner)
-        approxlabel = textproc.approximate_label(label,"dictionary.txt")
-        print(approxlabel,classNo)
+        label,textVis = extract_hazard_label_text(imgROI,tuner)
+        #approxlabel = textproc.approximate_label(label,"dictionary.txt")
+        print(label)
         textFoundList.append(label)
 
         if display:
@@ -134,14 +119,13 @@ def run_detection(imgpath,display):
 
     #now sanity check the text list
     if display:
-        plt.figure("Hazard Label Detection")
-        plt.subplot(311)
+        plt.figure("Input Image")
         plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
         if len(ROIList) > 0:
-            plt.subplot(312)
+            plt.figure("Detecting hazard label")
             plt.imshow(np.hstack(tuple(roiVisList)))
-            plt.subplot(313)
-            plt.imshow(np.hstack(tuple(textVisList)),cmap='gray')
+            plt.figure("Detecting text regions")
+            plt.imshow(np.hstack(tuple(textVisList)))
         else:
             print("No ROI found")
 

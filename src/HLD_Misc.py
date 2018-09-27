@@ -6,6 +6,7 @@ from PIL import Image
 import pytesseract
 import sys
 import math
+import HLD_Misc as imgmisc
 
 def display_region(regions,dim):
     mask = np.zeros(dim,np.uint8)
@@ -14,8 +15,20 @@ def display_region(regions,dim):
     plt.imshow(mask,cmap='gray')
     plt.show()
 
-def get_mask(regions,shape):
+def perform_adaptive_thresh(imgBGR,threshBlock,threshC):
+    imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
+
+    h,s,v = cv2.split(imgHSV)
+    #Adaptive gaussian on v channel
+    vThresh = cv2.adaptiveThreshold(v,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
+                                    threshBlock,threshC)
+
+    return vThresh
+
+def get_mask_from_regions(regions,shape):
     mask = np.zeros(shape,np.uint8)
+    #for regions with holes in them
+
     cv2.drawContours(mask,regions,-1,255,1)
     return mask
 
@@ -48,11 +61,18 @@ def calculate_centroid(regions):
 
     centroids = []
 
-    #Calculate the centroid
     for r in regions:
-        M = cv.moments(r)
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        centroids.append((cx,cy))
+        M = cv2.moments(r)
+        try:
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])
+        except ZeroDivisionError:
+            cx = 0
+            cy = 0
+        centroids.append(np.array([cx,cy]))
 
-    return centroids
+    centroids = np.array(centroids)
+    centerX = np.average(centroids[:,0],axis=0)
+    centerY = np.average(centroids[:,1],axis=0)
+
+    return (centerX,centerY)
