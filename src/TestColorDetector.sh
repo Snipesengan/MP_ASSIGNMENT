@@ -1,13 +1,13 @@
 file="20180920/SetD"
 file="20180920/SetC"
 file="20180920/SetB"
+file="SampleData-20180826/20180826/SetB"
+file="SampleData-20180826/20180826/SetC"
+file="res/SetA"
 file="res/SetB"
 file="res/SetC"
-file="res/SetD"
 file="SampleData-20180826/20180826/SetD"
-file="SampleData-20180826/20180826/SetB"
-file="res/SetA"
-file="SampleData-20180826/20180826/SetC"
+file="res/SetD"
 
 for image in $(ls $file); do
     echo $image

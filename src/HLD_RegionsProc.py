@@ -104,7 +104,8 @@ def filter_overlapping_regions(regions):
 
 def sort_left_right(cluster,maxWidth,maxHeight):
     def key(regions):
-        cx,cy,_,_ = cv2.boundingRect(np.array(regions).ravel().reshape(-1,2))
+        idx = np.array([cv2.boundingRect(r)[0] for r in regions]).argmin()
+        cx,cy,_,_ = cv2.boundingRect(regions[idx])
         return cy*maxWidth + cx
 
     tosort = cluster.copy()

@@ -58,32 +58,35 @@ def extract_hazard_label_text(roiBGR,tuner):
 
     vThresh    = imgmisc.perform_adaptive_thresh(roiBGR,tuner.threshBlock,tuner.threshC)
     mserRegion = regionproc.find_MSER(vThresh,tuner.minBlobArea,tuner.maxBlobArea,tuner.blobDelta)
-    filtered   = regionproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
+    filtered   = regionproc.filter_regions_by_location(mserRegion,(10,150,500,300))
+    filtered   = regionproc.filter_regions_by_eccentricity(filtered,tuner.maxE)
     filtered   = regionproc.filter_overlapping_regions(filtered)
-
     regionCluster = regionproc.approx_homogenous_regions_chain(filtered,3,0.2,0.2)
     #sort left to right
-    regionCluster = regionproc.sort_left_right(regionCluster)
+    regionCluster = regionproc.sort_left_right(regionCluster,500,500)
     for regions in regionCluster:
         space = sum([cv2.boundingRect(r)[2] for r in regions])/len(regions)
         textImg = textproc.space_out_text(roiBGR,regions,space)
         textTmp = find_text(textImg)
-        text = text + textTmp
-        textVis.append((textImg,textTmp))
-        text = text + '\n'
-
-
-
+        if len(textTmp) > 2:
+            text = text + textTmp
+            textVis.append(regions)
+            text = text + '\n'
 
 
     #for visual stuff
     vis = cv2.cvtColor(vThresh,cv2.COLOR_GRAY2RGB)
-    cv2.drawContours(vis,[cv2.convexHull(r) for r in mserRegion],-1,(0,255,0),1)
-    cv2.drawContours(vis,[cv2.convexHull(r) for r in filtered],-1,(0,0,255),1)
-    cv2.drawContours(vis,[cv2.convexHull(r) for r in filtered],-1,(255,0,0),1)
-    for img,txt in textVis:
-        plt.figure(txt)
-        plt.imshow(img,cmap='gray')
+
+    for i,regions in enumerate(textVis):
+        color = [0,0,0]
+        color[i%3] = 255
+        cv2.drawContours(vis,regions,-1,tuple(color),1)
+        if color == (255,0,0):
+            color = (0,255,0)
+        elif color == (0,255,0):
+            color = (0,0,255)
+        elif color == (0,0,255):
+            color = (255,0,0)
 
     return ' '.join(text.split()),vis
 
@@ -109,8 +112,8 @@ def run_detection(imgpath,display):
         imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
         ROIList.append(imgROI)
         label,textVis = extract_hazard_label_text(imgROI,tuner)
-        #approxlabel = textproc.approximate_label(label,"dictionary.txt")
-        print(label)
+        approxlabel = textproc.approximate_label(label,"dictionary.txt")
+        print(approxlabel)
         textFoundList.append(label)
 
         if display:
