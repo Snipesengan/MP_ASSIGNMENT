@@ -42,7 +42,7 @@ def filter_regions_by_location(regions,rect):
 
     return filtered
 
-def approx_homogenous_regions_chain(regions,deltaX,deltaY,C):
+def approx_homogenous_regions_chain(regions,deltaX,deltaY,C,minLength=2):
     getKey = lambda x: str(cv2.minEnclosingCircle(x)[0])
     visited = set()
     clusters = []
@@ -52,20 +52,20 @@ def approx_homogenous_regions_chain(regions,deltaX,deltaY,C):
         unvisited.sort(key = lambda x: cv2.boundingRect(x)[3])
         cluster = []
         currNode = unvisited.pop(0)
-        DFS(currNode,regions,visited,deltaX,deltaY,C,cluster)
-        clusters.append(cluster)
-
+        _DFS(currNode,regions,visited,deltaX,deltaY,C,cluster)
+        if(len(cluster) >= minLength):
+            clusters.append(cluster)
 
     return clusters
 
-def DFS(currNode,regions,visited,deltaX,deltaY,C,cluster):
+def _DFS(currNode,regions,visited,deltaX,deltaY,C,cluster):
     getKey = lambda x: str(cv2.minEnclosingCircle(x)[0])
     visited.add(getKey(currNode))
     cluster.append(currNode)
     nearbys = find_Nearest_Homogenous_Regions(currNode,regions,deltaX,deltaY,C)
     for nextNode in nearbys:
         if not getKey(nextNode) in visited:
-            DFS(nextNode,regions,visited,deltaX,deltaY,C,cluster)
+            _DFS(nextNode,regions,visited,deltaX,deltaY,C,cluster)
 
 def find_Nearest_Homogenous_Regions(currNode,regions,deltaX,deltaY,C):
     x,y,w,h = cv2.boundingRect(currNode)
@@ -102,12 +102,11 @@ def filter_overlapping_regions(regions):
 
     return filtered
 
-def sort_left_right(cluster,maxWidth,maxHeight):
-    def key(regions):
-        idx = np.array([cv2.boundingRect(r)[0] for r in regions]).argmin()
-        cx,cy,_,_ = cv2.boundingRect(regions[idx])
-        return cy*maxWidth + cx
+def sort_left_to_right(cluster,maxWidth):
+    def keyFunc(regions):
+        cx,cy = imgmisc.calculate_centroid(regions)
+        return math.sqrt(cx**2 + cy**2)
 
     tosort = cluster.copy()
-    tosort.sort(key = key)
+    tosort.sort(key = keyFunc)
     return tosort

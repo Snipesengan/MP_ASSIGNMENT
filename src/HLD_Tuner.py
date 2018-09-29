@@ -25,18 +25,12 @@ class Tuner:
         self._finalSize   = (500,500)
 
         #Text localization
-        self._minBlobArea   = 50
+        self._minBlobArea   = 55
         self._maxBlobArea   = 5000
         self._blobDelta     = 250
         self._threshBlock   = 33
         self._threshC       = 2
         self._maxE          = 0.95
-        self._minTextY      = 150
-        self._maxTextY      = 500 - 150
-        self._textYRes      = 20
-        self._minTextHeight = 10
-        self._maxTextHeight = 170
-        self._textHRes      = 13
 
     #Lets make setter and getters for these things lmao, python sucks at OO
     def medianKSize():
@@ -237,47 +231,3 @@ class Tuner:
             del self._maxE
         return locals()
     maxE = property(**maxE())
-
-    def minTextHeight():
-        doc = "TheminTextHeight property."
-        def fget(self):
-            return self._minTextHeight
-        def fset(self, value):
-            self._minTextHeight = value
-        def fdel(self):
-            del self._minTextHeight
-        return locals()
-    minTextHeight = property(**minTextHeight())
-
-    def maxTextHeight():
-        doc = "TheminTextHeight property."
-        def fget(self):
-            return self._maxTextHeight
-        def fset(self, value):
-            self._maxTextHeight = value
-        def fdel(self):
-            del self._maxTextHeight
-        return locals()
-    maxTextHeight = property(**maxTextHeight())
-
-    def textYRes():
-        doc = "The_textYRes property."
-        def fget(self):
-            return self._textYRes
-        def fset(self, value):
-            self._textYRes = value
-        def fdel(self):
-            del self._textYRes
-        return locals()
-    textYRes = property(**textYRes())
-
-    def textHRes():
-        doc = "The_textHRes property."
-        def fget(self):
-            return self._textHRes
-        def fset(self, value):
-            self._textHRes = value
-        def fdel(self):
-            del self._textHRes
-        return locals()
-    textHRes = property(**textHRes())

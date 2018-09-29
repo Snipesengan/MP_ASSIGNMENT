@@ -1,0 +1,232 @@
+label-1_3-explosive.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : EXPLOSIVE
+CLASS NUMBER: 1
+
+label-1_4-explosive.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : EXPLOSIVE
+CLASS NUMBER: 1
+
+label-1_5-blasting-agent.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : BLASTINGAGENT
+CLASS NUMBER: 1
+
+label-1_6-explosive.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : EXPLOSIVE
+CLASS NUMBER: 1
+
+label-1-explosive-subsidiary.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : 
+CLASS NUMBER: 1
+
+label-2-flammable-gas.png
+TOP         : red
+BOTTOM      : red
+LABEL       : FLAMMABLEGAS
+CLASS NUMBER: 2
+
+label-2-non-flammable-gas.png
+TOP         : green
+BOTTOM      : green
+LABEL       : NONFLAMMABLEGAS
+CLASS NUMBER: 2
+
+label-2-poison-gas.png
+TOP         : white
+BOTTOM      : white
+LABEL       : INHALATION HAZARD
+CLASS NUMBER: 2
+
+label-3-flammable-liquid.png
+TOP         : red
+BOTTOM      : red
+LABEL       : FLAMMABLELIQUID
+CLASS NUMBER: 3
+
+label-4-dangerous-when-wet.png
+TOP         : blue
+BOTTOM      : blue
+LABEL       : DANGEROUS WHEN
+CLASS NUMBER: 4
+
+label-4-spontaneously-combustible.png
+TOP         : white
+BOTTOM      : red
+LABEL       : SPONTANEOUSLY COMBUSTIBLE
+CLASS NUMBER: 4
+
+label-5_1-oxidizer.png
+TOP         : yellow
+BOTTOM      : yellow
+LABEL       : OXIDIZER
+CLASS NUMBER: 5.1
+
+label-5_2-organic-peroxide.png
+TOP         : red
+BOTTOM      : yellow
+LABEL       : ORGANICPEROXIDE
+CLASS NUMBER: 5.2
+
+label-6-poison-inhalation-hazard.png
+TOP         : white
+BOTTOM      : white
+LABEL       : INHALATION HAZARD
+CLASS NUMBER: 6
+
+label-6-poison.png
+TOP         : white
+BOTTOM      : white
+LABEL       : POISON
+CLASS NUMBER: 6
+
+label-7-radioactive-iii.png
+TOP         : yellow
+BOTTOM      : white
+LABEL       : RADIOACTIVEIII
+CLASS NUMBER: 7
+
+label-7-radioactive-ii.png
+TOP         : yellow
+BOTTOM      : white
+LABEL       : RADIOACTIVEII
+CLASS NUMBER: 7
+
+label-7-radioactive-i.png
+TOP         : white
+BOTTOM      : white
+LABEL       : RADIOACTIVE!
+CLASS NUMBER: 7
+
+label-8-corrosive.png
+TOP         : white
+BOTTOM      : black
+LABEL       : CORROSIVE
+CLASS NUMBER: 8
+
+placard-1_4-explosives.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : EXPLOSIVES
+CLASS NUMBER: 1
+
+placard-1_5-blasting-agents.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : BLASTING AGENTS
+CLASS NUMBER: 1
+
+placard-1_6-explosives.png
+TOP         : orange
+BOTTOM      : orange
+LABEL       : EXPLOSIVES
+CLASS NUMBER: 1
+
+placard-2-flammable-gas.png
+TOP         : red
+BOTTOM      : red
+LABEL       : FLAMMABLE GAS
+CLASS NUMBER: 2
+
+placard-2-inhalation-hazard.png
+TOP         : white
+BOTTOM      : white
+LABEL       : INHALATION HAZARD
+CLASS NUMBER: 2
+
+placard-2-non-flammable-gas.png
+TOP         : white
+BOTTOM      : white
+LABEL       : NONFLAMMABLE GAS
+CLASS NUMBER: 2
+
+placard-2-oxygen.png
+TOP         : yellow
+BOTTOM      : yellow
+LABEL       : OXYGEN
+CLASS NUMBER: 2
+
+placard-3-combustible.png
+TOP         : red
+BOTTOM      : red
+LABEL       : COMBUSTIBLE
+CLASS NUMBER: 3
+
+placard-3-flammable.png
+TOP         : red
+BOTTOM      : red
+LABEL       : FLAMMABLE
+CLASS NUMBER: 3
+
+placard-3-fuel-oil.png
+TOP         : red
+BOTTOM      : red
+LABEL       : FUELOIL
+CLASS NUMBER: 3
+
+placard-3-gasoline.png
+TOP         : red
+BOTTOM      : red
+LABEL       : GASOLINE
+CLASS NUMBER: 3
+
+placard-4-dangerous-when-wet.png
+TOP         : blue
+BOTTOM      : blue
+LABEL       : DANGEROUS WHEN WET
+CLASS NUMBER: 4
+
+placard-4-spontaneously-combustible.png
+
+placard-5_1-oxidizer.png
+TOP         : yellow
+BOTTOM      : yellow
+LABEL       : OXIDIZER
+CLASS NUMBER: 5.1
+
+placard-5_2-organic-peroxide.png
+TOP         : red
+BOTTOM      : yellow
+LABEL       : ORGANIC PEROXIDE
+CLASS NUMBER: 3.2
+
+placard-6-inhalation-hazard.png
+TOP         : white
+BOTTOM      : white
+LABEL       : INHALATION HAZARD
+CLASS NUMBER: 6
+
+placard-6-poison.png
+TOP         : white
+BOTTOM      : white
+LABEL       : POISON
+CLASS NUMBER: 6
+
+placard-7-radioactive.png
+TOP         : yellow
+BOTTOM      : white
+LABEL       : RADIOACTIVE
+CLASS NUMBER: 
+
+placard-8-corrosive-notext.png
+TOP         : white
+BOTTOM      : black
+LABEL       : 
+CLASS NUMBER: 3
+
+placard-8-corrosive.png
+TOP         : white
+BOTTOM      : black
+LABEL       : CORROSIVE
+CLASS NUMBER: 3
+
+test.png
+

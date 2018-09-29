@@ -3,6 +3,8 @@ import numpy as np
 import tkinter
 import matplotlib.pyplot as plt
 import math
+import re
+
 import HLD_Misc as imgmisc
 import HLD_RegionsProc as regionproc
 import HLD_Transform as transform
@@ -12,7 +14,8 @@ def approximate_label(text,wordFile):
     outText = ""
     match   = []
     lines = text.split('\n')
-    words = [l.replace(' ','') for l in lines]
+    words = [''.join(re.findall(r"[a-zA-Z]",l)) for l in lines]
+
     f = open(wordFile)
     data = f.read()
     expectedWords = data.split('\n')
@@ -27,7 +30,7 @@ def approximate_label(text,wordFile):
                 if len(lcs) > 0:
                     substring  = list(lcs).pop()
                     percentMatch = 0 if len(expectword) == 0 else len(substring)/len(expectword)
-                    if percentMatch > 0.7:
+                    if percentMatch == 1:
                         matches.append((substring,expectword))
 
             if len(matches) > 0:
@@ -38,25 +41,23 @@ def approximate_label(text,wordFile):
             else:
                 noMatch = True
 
-    if outText == "":
-        outText = text
+        if outText == "":
+            outText = '\n'.join([word for word in words if len(word) >= 3])
 
     return outText
 
 def space_out_text(imgBGR,textRegions,spaceWidth):
-    #calculate the average width of textRegions
+
+    #print(len(textRegions))
     textRegions.sort(key = lambda r: cv2.boundingRect(r)[0])
     outImg = np.zeros((imgBGR.shape[0],int(imgBGR.shape[1] + spaceWidth*len(textRegions))))
-
     currX = cv2.boundingRect(textRegions[0])[0] + 20
     gaussThresh = remove_Gaussian_noise(imgBGR,textRegions)
     for i,r in enumerate(textRegions):
         textColor = detect_text_color(gaussThresh,r)
         mask = imgmisc.get_mask_from_regions([r],gaussThresh.shape)
-        if textColor == 'white':
-            regionImg = cv2.bitwise_and(gaussThresh,gaussThresh,mask=mask)
-        elif textColor == 'black':
-            regionImg = cv2.bitwise_and(255 - gaussThresh,255 - gaussThresh,mask=mask)
+        if textColor == 'black': gaussThresh = 255 - gaussThresh
+        regionImg = cv2.bitwise_and(gaussThresh,gaussThresh,mask=mask)
 
         x,_,width,_ = cv2.boundingRect(r)
         outImg = outImg + transform.translate(regionImg,currX - x,0,outImg.shape)
@@ -85,31 +86,6 @@ def detect_text_color(textImg,textRegion):
     return textColor
 
 #This function attemps to cluster regions based ellipse, the ratio of semi major axis to minor axis
-
-def filter_regions_by_textHomogeneity(regions,minHeight,maxHeight,res):
-
-    numBins = int((maxHeight - minHeight)/res)
-    clusters = [[] for i in range(numBins)]
-    histArr = []
-
-    for r in regions:
-        x,y,w,h = cv2.boundingRect(r)
-        if h >= minHeight and h <= maxHeight:
-            histArr.append(h)
-
-    hist,binEdge = np.histogram(histArr,bins=numBins,range=(minHeight,maxHeight))
-    for r in regions:
-        x,y,w,h = cv2.boundingRect(r)
-
-        histIdx = np.abs(binEdge - h).argmin()
-        if h < binEdge[histIdx]:
-            histIdx = histIdx - 1
-
-        if hist[histIdx] >= 3:
-            clusters[histIdx].append(r)
-
-    return [c for c in clusters if len(c) > 0 ]
-
 
 def find_LCS(S,T):
     m = len(S)
