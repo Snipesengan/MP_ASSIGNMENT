@@ -9,43 +9,6 @@ import HLD_Misc as imgmisc
 import HLD_RegionsProc as regionproc
 import HLD_Transform as transform
 
-def approximate_label(text,wordFile):
-
-    outText = ""
-    match   = []
-    lines = text.split('\n')
-    words = [''.join(re.findall(r"[a-zA-Z]",l)) for l in lines]
-
-    f = open(wordFile)
-    data = f.read()
-    expectedWords = data.split('\n')
-    for word in words:
-        lcs = set()
-        word = word.upper()
-        noMatch = False
-        while len(word) >= 3 and noMatch == False:
-            matches = []
-            for expectword in expectedWords:
-                lcs = find_LCS(expectword,word)
-                if len(lcs) > 0:
-                    substring  = list(lcs).pop()
-                    percentMatch = 0 if len(expectword) == 0 else len(substring)/len(expectword)
-                    if percentMatch == 1:
-                        matches.append((substring,expectword))
-
-            if len(matches) > 0:
-                matches.sort(key=lambda x: len(x[1]),reverse = True)
-                longestSubstring, closestMatch = matches[0]
-                outText = outText + closestMatch + ' '
-                word = word.replace(longestSubstring,'')
-            else:
-                noMatch = True
-
-        if outText == "":
-            outText = '\n'.join([word for word in words if len(word) >= 3])
-
-    return outText
-
 def space_out_text(imgBGR,textRegions,spaceWidth):
 
     #print(len(textRegions))
@@ -84,8 +47,6 @@ def detect_text_color(textImg,textRegion):
         textColor = 'black'
 
     return textColor
-
-#This function attemps to cluster regions based ellipse, the ratio of semi major axis to minor axis
 
 def find_LCS(S,T):
     m = len(S)

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import math
 import HLD_Misc as imgmisc
 
+
 def find_MSER(imgray,minArea,maxArea,delta):
 
     mser = cv2.MSER_create()

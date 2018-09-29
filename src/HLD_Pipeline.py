@@ -33,7 +33,7 @@ def find_region_of_interest(imgray,tuner):
     #look like a Hazmat label *Knowledge engineering here*
     hazardlabels_contours_mask = []
     res,contours,hierachy = shapeproc.find_contours(imgray,cannyMin,cannyMax,morphK)
-    contours = shapeproc.filter_contour_area(contours,minROIArea,maxROIArea) #contours,minArea,maxArea
+    contours = shapeproc.filter_contour_area(contours,minROIArea,maxROIArea)
     rects = shapeproc.filter_rectangles(contours,epsilon)
     rects = shapeproc.filter_overlaping_contour(rects)
 
@@ -109,11 +109,16 @@ def extract_hazard_label_text(roiBGR,tuner):
 
     return (text,classNumber),vis,nonRegThresh
 
+def detect_color(imgROI,mask=None):
+    topMap = colorproc.calculate_color_percentage(imgROI[0:250,...],mask[0:250,...])
+    botMap = colorproc.calculate_color_percentage(imgROI[250:499,...],mask[250:499,...])
+    topColor = list(topMap.keys())[0]
+    botColor = list(botMap.keys())[0]
+
+    return topMap,botMap
+
 #The main pipe line
 def run_detection(imgpath,display):
-
-    ROIList = []
-    textFoundList = []
     tuner = HLD_Tuner.Tuner()
 
     if display:
@@ -131,24 +136,13 @@ def run_detection(imgpath,display):
         roiMask = 255 - np.zeros(imgBGR.shape[:-1],dtype=np.uint8)
         imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
         roiMask = transform.perspective_trapezoid_to_rect(roiMask,rectContour,tuner.finalSize,mask)
-        ROIList.append(imgROI)
 
         (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
-        roiMask = roiMask - (255 - nonRegThresh)
-        #plt.imshow(cv2.cvtColor(imgROI,cv2.COLOR_BGR2HSV))
-        topMap = colorproc.calculate_color_percentage(imgROI[0:250,...],roiMask[0:250,...])
-        botMap = colorproc.calculate_color_percentage(imgROI[250:499,...],roiMask[250:499,...])
-        topColor = list(topMap.keys())[0]
-        botColor = list(botMap.keys())[0]
-        print(topMap)
-        print(botMap)
-
-        print("TOP         : " + topColor)
-        print("BOTTOM      : " + botColor)
+        topColors,botColors = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
+        print("TOP         : " + list(topColors.keys())[0])
+        print("BOTTOM      : " + list(botColors.keys())[0])
         print("LABEL       : " + label)
         print("CLASS NUMBER: " + classNo)
-
-        textFoundList.append(label)
 
         if display:
             roiVisList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
@@ -158,7 +152,7 @@ def run_detection(imgpath,display):
     if display:
         plt.figure("Input Image")
         plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
-        if len(ROIList) > 0:
+        if len(roiVisList) > 0:
             plt.figure("Detecting hazard label")
             plt.imshow(np.hstack(tuple(roiVisList)))
             plt.figure("Detecting text regions")
