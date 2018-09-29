@@ -18,26 +18,6 @@ COLOR_GREEN_LOWER,COLOR_GREEN_UPPER     = np.array([23,0,0]),np.array([85,255,25
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,60])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,90]),np.array([180,90,255])
 
-def color_correction(imgBGR):
-
-    #Increasing Saturation to better detect color
-    """
-    imgHSV    = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
-    H,S,V     = cv2.split(imgHSV)
-
-    SEq       = cv2.equalizeHist(S)
-    imgBGR    = cv2.cvtColor(cv2.merge((H,SEq,V)),cv2.COLOR_HSV2BGR)
-    """
-    #White balancing
-
-    imgYCrCb  = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2YCrCb)
-    Y,Cr,Cb   = cv2.split(imgYCrCb)
-    YEq       = cv2.equalizeHist(Y)
-    imgBGR    = cv2.cvtColor(cv2.merge((YEq,Cr,Cb)),cv2.COLOR_YCrCb2BGR)
-
-
-    return imgBGR
-
 def calculate_color_percentage(imgBGR,mask=None,display=False):
 
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)

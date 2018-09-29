@@ -19,6 +19,7 @@ import HLD_Transform as transform
 import HLD_Tuner
 import HLD_ColorProc as colorproc
 import HLD_Misc as imgmisc
+import ShapeContext
 
 def find_region_of_interest(imgray,tuner):
 
@@ -75,6 +76,7 @@ def extract_hazard_label_text(roiBGR,tuner):
         tessOut =  find_text(textImg)
         textTmp = ''.join(re.findall(r"[A-Z]|!",tessOut))
         textVis.append(regions)
+
         longest = ""
         for words in dictionary:
             lcs = textproc.find_LCS(textTmp,words)
@@ -120,6 +122,7 @@ def detect_color(imgROI,mask=None):
 #The main pipe line
 def run_detection(imgpath,display):
     tuner = HLD_Tuner.Tuner()
+    sc    = ShapeContext.ShapeContext()
 
     if display:
         textVisList = []
@@ -132,6 +135,12 @@ def run_detection(imgpath,display):
     blurred = cv2.GaussianBlur(median,tuner.gaussKSize,tuner.gaussSigmaX)
     hl_c_m = find_region_of_interest(blurred,tuner)
 
+    descriptors = {
+                    'Flame'       : np.load("res/ShapeDescriptors/FlameSymbol.npy"),
+                    'Corrosive'   : np.load("res/ShapeDescriptors/CorrosiveSymbol.npy"),
+                    'Radioactive' : np.load("res/ShapeDescriptors/RadioactiveSymbol.npy")
+                  }
+
     for i, (rectContour,mask) in enumerate(hl_c_m):
         roiMask = 255 - np.zeros(imgBGR.shape[:-1],dtype=np.uint8)
         imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
@@ -139,6 +148,12 @@ def run_detection(imgpath,display):
 
         (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
         topColors,botColors = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
+
+        symbolPoints = sc.get_points(cv2.cvtColor(imgROI[0:250,:],cv2.COLOR_BGR2GRAY))
+        symbolSC     = sc.compute_shape_descriptor(symbolPoints)
+        print(sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolSC,descriptors['Corrosive'])))
+        print(sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolSC,descriptors['Flame'])))
+        print(sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolSC,descriptors['Radioactive'])))
         print("TOP         : " + list(topColors.keys())[0])
         print("BOTTOM      : " + list(botColors.keys())[0])
         print("LABEL       : " + label)

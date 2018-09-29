@@ -38,11 +38,10 @@ class ShapeContext(object):
 
     def get_points(self,imgGray,simpleto=100):
         canny = cv2.Canny(imgGray,100,200)
-        im2,cnts,hierachy = cv2.findContours(canny,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-
+        im2,cnts,hierachy = cv2.findContours(canny,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         points = np.array(cnts[0]).reshape((-1,2))
-        if len(cnts) > 1:
-            points = np.concatenate([points,np.array(cnts[1]).reshape((-1,2))],axis=0)
+        for i in range(1,len(cnts)):
+            points = np.concatenate([points,np.array(cnts[i]).reshape((-1,2))],axis=0)
 
         points = points.tolist()
         step = int(len(points)/simpleto)
@@ -138,10 +137,13 @@ class ShapeContext(object):
         return totalCost
 
 if __name__ == "__main__":
+    imgpath = sys.argv[1]
+    #Use this to generate Binary array file for shape descriptor
     SC = ShapeContext()
     img  = cv2.imread(sys.argv[1],0)
     points = SC.get_points(img)
     descriptor = SC.compute_shape_descriptor(points)
-    C = SC.calc_cost_matrix(descriptor,descriptor)
-    print(C)
-    print(SC.compute_min_cost_greedy(C))
+    #C = SC.calc_cost_matrix(descriptor,descriptor)
+
+    outputDest = imgpath.split('.')[0] + '.npy'
+    np.save(outputDest,descriptor)
