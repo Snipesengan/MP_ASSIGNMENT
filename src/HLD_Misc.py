@@ -19,8 +19,8 @@ def perform_adaptive_thresh(imgBGR,threshBlock,threshC):
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
 
     h,s,v = cv2.split(imgHSV)
-    #Adaptive gaussian on v channel
-    vThresh = cv2.adaptiveThreshold(v,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
+    erode = cv2.erode(v,np.ones((2,2),np.uint8),iterations = 1)
+    vThresh = cv2.adaptiveThreshold(erode,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
                                     threshBlock,threshC)
 
     return vThresh

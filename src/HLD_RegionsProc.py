@@ -19,6 +19,30 @@ def find_MSER(imgray,minArea,maxArea,delta):
 
     return areaFilter
 
+def filter_regions_by_solidty(regions,minSolidity,maxSolidity):
+    filtered = []
+
+    for r in regions:
+        area = cv2.contourArea(r)
+        hull = cv2.convexHull(r)
+        hull_area = cv2.contourArea(hull)
+        solidity = float(area)/hull_area
+        if solidity >= minSolidity and solidity <= maxSolidity:
+            filtered.append(r)
+
+    return filtered
+
+def filter_regions_by_area(regions,minArea,maxArea):
+    filtered = []
+
+    for r in regions:
+        area = cv2.contourArea(cv2.convexHull(r))
+        if area >= minArea and area <= maxArea:
+            filtered.append(r)
+
+    return filtered
+
+
 def filter_regions_by_eccentricity(regions,maxEccentricity):
 
     filtered = []

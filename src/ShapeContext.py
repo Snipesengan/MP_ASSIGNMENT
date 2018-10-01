@@ -6,6 +6,7 @@ import math
 import sys
 
 import HLD_ShapeProc as shapeproc
+import HLD_Misc as imgmisc
 
 class ShapeContext(object):
 
@@ -23,7 +24,8 @@ class ShapeContext(object):
         for i in range(len(P)):
             for j in range(len(Q)):
                 v = np.array(P[i]) - np.array(Q[j])
-                result[i,j] = np.sqrt(v[0]**2 + v[1]**2)
+                result[i,j] = math.sqrt(v[0]**2 + v[1]**2)
+
 
         return result
 
@@ -36,20 +38,49 @@ class ShapeContext(object):
 
         return result
 
-    def get_points(self,imgGray,simpleto=100):
-        canny = cv2.Canny(imgGray,100,200)
-        im2,cnts,hierachy = cv2.findContours(canny,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        points = np.array(cnts[0]).reshape((-1,2))
+    def get_points(self,cnts,sampleto=100):
+        pts = np.array(cnts[0].reshape(-1,2))
         for i in range(1,len(cnts)):
-            points = np.concatenate([points,np.array(cnts[i]).reshape((-1,2))],axis=0)
+            pts = np.concatenate([pts,np.array(cnts[i].reshape(-1,2))])
 
-        points = points.tolist()
-        step = int(len(points)/simpleto)
-        points= [points[i] for i in range(0,len(points),step)][:simpleto]
-        if len(points) < simpleto:
-            points = points + [0,0]*(simpleto - len(points))
+        sampleIdxs = np.random.choice(pts.shape[0],sampleto)
 
-        return points
+        return pts[sampleIdxs]
+
+    def get_points_from_img(self, image, threshold=50, simpleto=200, radius=2):
+        """
+            That is not very good algorithm of choosing path points, but it will work for our case.
+            Idea of it is just to create grid and choose points that on this grid.
+        """
+        if len(image.shape) > 2:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        dst = cv2.Canny(image, threshold, threshold * 3, 3)
+        py, px = np.gradient(image)
+        # px, py gradients maps shape can be smaller then input image shape
+        points = [index for index, val in np.ndenumerate(dst)
+                  if val == 255 and index[0] < py.shape[0] and index[1] < py.shape[1]]
+        h, w = image.shape
+        _radius = radius
+        while len(points) > simpleto:
+            newpoints = points
+            xr = range(0, w, _radius)
+            yr = range(0, h, _radius)
+            for p in points:
+                if p[0] not in yr and p[1] not in xr:
+                    newpoints.remove(p)
+                    if len(points) <= simpleto:
+                        T = np.zeros((simpleto, 1))
+                        for i, (y, x) in enumerate(points):
+                            radians = math.atan2(py[y, x], px[y, x])
+                            T[i] = radians + 2 * math.pi * (radians < 0)
+                        return points, np.asmatrix(T)
+                _radius += 1
+            T = np.zeros((simpleto, 1))
+        for i, (y, x) in enumerate(points):
+            radians = math.atan2(py[y, x], px[y, x])
+            T[i] = radians + 2 * math.pi * (radians < 0)
+
+        return points, np.asmatrix(T)
 
     #Cost between two points descriptor
     def _cost(self,g,h):
@@ -82,10 +113,6 @@ class ShapeContext(object):
 
         #Get the relative distance array where arr[i,j] is relative dist from Pi to Pj
         rArr = self._calc_dist_arr(points,points)
-        #Get two points with the alrgest distance
-        maxIdx = rArr.argmax()
-        maxIdx   = [int(maxIdx/numPts),maxIdx%numPts]
-
         #Normalizing the distance will allow some scale invariancy
         rArrNorm = rArr / rArr.mean()
 
@@ -93,17 +120,13 @@ class ShapeContext(object):
         rBinEdges = np.logspace(np.log10(self.rInner),np.log10(self.rOuter),self.nBinsR)
         rArrQ  = np.zeros((numPts,numPts),dtype=int)
         #Summing occurances between interval, Quantization (Cummulative histogram basically)
-        for intval in rBinEdges:
-            rArrQ += rArrNorm < intval
+        for i in range(self.nBinsR):
+            rArrQ += (rArrNorm < rBinEdges[i])
 
         fz = rArrQ > 0
 
         #Calculating angle between each points
         thetaArr = self._calc_ang_arr(points,points)
-        normAng  = thetaArr[maxIdx[0],maxIdx[1]]
-        #Making angle matrix rotation invariant
-        thetaArr = thetaArr - normAng * (np.ones((numPts,numPts)) - np.identity(numPts))
-        thetaArr[np.abs(thetaArr) < 1e-7] = 0
 
         #Shift angle by 2Pi to get angles[0,2pi]
         thetaArr2 = thetaArr + 2 * math.pi * (thetaArr < 0 )
@@ -116,7 +139,7 @@ class ShapeContext(object):
             sn = np.zeros((self.nBinsR,self.nBinsTheta))
             for j in range(numPts):
                 if fz[i,j]:
-                    sn[rArrQ[i,j] -1, thetaArrQ[i,j] - 1] += 1
+                    sn[rArrQ[i,j] - 1, thetaArrQ[i,j] - 1] += 1
             descriptor[i] = sn.reshape(nBins)
 
         return descriptor
@@ -128,7 +151,7 @@ class ShapeContext(object):
 
         totalCost = 0
         row,col = C.shape
-        for i in range(C.shape[0]):
+        for i in range(row):
             minIdx = C.argmin()
             totalCost = totalCost + C[int(minIdx/row),minIdx%row]
             #Remove potential of going to this particular point again
@@ -139,11 +162,16 @@ class ShapeContext(object):
 if __name__ == "__main__":
     imgpath = sys.argv[1]
     #Use this to generate Binary array file for shape descriptor
-    SC = ShapeContext()
+    sc = ShapeContext()
     img  = cv2.imread(sys.argv[1],0)
-    points = SC.get_points(img)
-    descriptor = SC.compute_shape_descriptor(points)
-    #C = SC.calc_cost_matrix(descriptor,descriptor)
+    #gauss = cv2.GaussianBlur(img,(5,5),0)
+    #thresh = imgmisc.perform_adaptive_thresh(gauss,35,2)
+    #opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, np.ones((3,3),dtype=np.uint8))
+    cnts = cv2.findContours(img,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)[1]
+    pts  = sc.get_points(cnts)
+    #pts  = sc.get_points_from_img(img)
+    des  = sc.compute_shape_descriptor(pts)
 
-    outputDest = imgpath.split('.')[0] + '.npy'
-    np.save(outputDest,descriptor)
+
+    outputDest = imgpath.replace('res/Symbols','res/ShapeDescriptors').split('.')[0] + '.npy'
+    np.save(outputDest,des)
