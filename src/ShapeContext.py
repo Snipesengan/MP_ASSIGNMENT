@@ -38,49 +38,15 @@ class ShapeContext(object):
 
         return result
 
-    def get_points(self,cnts,sampleto=100):
+    def get_points(self,cnts,sampleto=150):
         pts = np.array(cnts[0].reshape(-1,2))
         for i in range(1,len(cnts)):
             pts = np.concatenate([pts,np.array(cnts[i].reshape(-1,2))])
 
         sampleIdxs = np.random.choice(pts.shape[0],sampleto)
+        sampPts = pts[sampleIdxs]
 
-        return pts[sampleIdxs]
-
-    def get_points_from_img(self, image, threshold=50, simpleto=200, radius=2):
-        """
-            That is not very good algorithm of choosing path points, but it will work for our case.
-            Idea of it is just to create grid and choose points that on this grid.
-        """
-        if len(image.shape) > 2:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        dst = cv2.Canny(image, threshold, threshold * 3, 3)
-        py, px = np.gradient(image)
-        # px, py gradients maps shape can be smaller then input image shape
-        points = [index for index, val in np.ndenumerate(dst)
-                  if val == 255 and index[0] < py.shape[0] and index[1] < py.shape[1]]
-        h, w = image.shape
-        _radius = radius
-        while len(points) > simpleto:
-            newpoints = points
-            xr = range(0, w, _radius)
-            yr = range(0, h, _radius)
-            for p in points:
-                if p[0] not in yr and p[1] not in xr:
-                    newpoints.remove(p)
-                    if len(points) <= simpleto:
-                        T = np.zeros((simpleto, 1))
-                        for i, (y, x) in enumerate(points):
-                            radians = math.atan2(py[y, x], px[y, x])
-                            T[i] = radians + 2 * math.pi * (radians < 0)
-                        return points, np.asmatrix(T)
-                _radius += 1
-            T = np.zeros((simpleto, 1))
-        for i, (y, x) in enumerate(points):
-            radians = math.atan2(py[y, x], px[y, x])
-            T[i] = radians + 2 * math.pi * (radians < 0)
-
-        return points, np.asmatrix(T)
+        return sampPts
 
     #Cost between two points descriptor
     def _cost(self,g,h):
@@ -167,7 +133,8 @@ if __name__ == "__main__":
     #gauss = cv2.GaussianBlur(img,(5,5),0)
     #thresh = imgmisc.perform_adaptive_thresh(gauss,35,2)
     #opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, np.ones((3,3),dtype=np.uint8))
-    cnts = cv2.findContours(img,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)[1]
+    canny = cv2.Canny(img,100,200)
+    cnts = cv2.findContours(canny,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)[1]
     pts  = sc.get_points(cnts)
     #pts  = sc.get_points_from_img(img)
     des  = sc.compute_shape_descriptor(pts)

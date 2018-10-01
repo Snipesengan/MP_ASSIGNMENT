@@ -28,8 +28,8 @@ class Tuner:
         self._minBlobArea   = 55
         self._maxBlobArea   = 5000
         self._blobDelta     = 250
-        self._threshBlock   = 33
-        self._threshC       = 2
+        self._threshBlock   = 35
+        self._threshC       = 3
         self._maxE          = 0.95
 
     #Lets make setter and getters for these things lmao, python sucks at OO

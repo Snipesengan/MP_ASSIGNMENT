@@ -31,16 +31,16 @@ def space_out_text(imgBGR,textRegions,spaceWidth):
 def remove_Gaussian_noise(imgBGR,regions):
     blurSize = int(math.sqrt(sum([cv2.contourArea(r) for r in regions])/len(regions))/1.7) * 2 + 1
     blur   = cv2.GaussianBlur(imgBGR,(blurSize,blurSize),0)
-    thresh = imgmisc.perform_adaptive_thresh(blur,25,2)
+    thresh = imgmisc.perform_adaptive_thresh(blur,21,2)
 
     return thresh
 
 def detect_text_color(textImg,textRegion):
     wordMask = np.zeros(textImg.shape,np.uint8)
     cv2.drawContours(wordMask,[textRegion],0,255,-1)
+    #plt.imshow(wordMask,cmap='gray'),plt.show()
     whiteText = cv2.bitwise_and(textImg,textImg,mask=wordMask)
     blackText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=wordMask)
-
     if(np.bincount(whiteText.flatten(),minlength=2)[-1] > np.bincount(blackText.flatten(),minlength=2)[-1]):
         textColor = 'white'
     else:

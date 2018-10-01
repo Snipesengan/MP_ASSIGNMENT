@@ -63,7 +63,6 @@ def extract_hazard_label_text(roiBGR,tuner):
 
     vThresh    = imgmisc.perform_adaptive_thresh(roiBGR,tuner.threshBlock,tuner.threshC)
     mserRegion = regionproc.find_MSER(vThresh,tuner.minBlobArea,tuner.maxBlobArea,tuner.blobDelta)
-
     filtered   = regionproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
     filtered   = regionproc.filter_overlapping_regions(filtered)
 
@@ -91,9 +90,9 @@ def extract_hazard_label_text(roiBGR,tuner):
     #FOR CLASS NUMBER
     #get only the bottom regions where the class number is
     classRegions = regionproc.filter_regions_by_location(filtered,(150,350,150,150))
-    classRegionsCluster = regionproc.approx_homogenous_regions_chain(classRegions,3,3,3,minLength=1)
+    classRegionsCluster = regionproc.approx_homogenous_regions_chain(classRegions,3,0.85,3,minLength=1)
     for regions in classRegionsCluster:
-        filtered = regionproc.filter_regions_by_area(regions,150,6000)
+        filtered = regionproc.filter_regions_by_area(regions,100,6000)
         if len(filtered) > 0:
             classImg = textproc.space_out_text(roiBGR,filtered,10)
             classImg = transform.translate(classImg,0,-250,classImg.shape)
@@ -123,38 +122,14 @@ def detect_color(imgROI,mask=None):
 
     return topMap,botMap
 
-def find_matches(img1,img2):
-    #first appply adaptive thresh and morph to remove noise and shadows
-    orb = cv2.ORB_create()
-    kp1, des1 = orb.detectAndCompute(img1,None)
-    kp2, des2 = orb.detectAndCompute(img2,None)
-
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-    matches = bf.knnMatch(des1,des2, k=2)
-
-    # Apply ratio test
-    matchesMask = [[0,0] for i in range(len(matches))]
-    # ratio test as per Lowe's paper
-    for i,(m,n) in enumerate(matches):
-        if m.distance < 0.7*n.distance:
-            matchesMask[i]=[1,0]
-
-    draw_params = dict(matchColor = (0,255,0),
-                    singlePointColor = (255,0,0),
-                    matchesMask = matchesMask,
-                    flags = 0)
-
-    img3 = cv2.drawMatchesKnn(img1,kp1,img2,kp2,matches,None,**draw_params)
-    plt.imshow(img3),plt.show()
-    return len(matches)
-
 def find_symbol_cnt(imgROI):
-    gauss = cv2.GaussianBlur(imgROI,(5,5),0)
+    gauss = cv2.GaussianBlur(imgROI[:230,:,:],(5,5),0)
     gray = cv2.cvtColor(gauss,cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,21,3)
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, np.ones((3,3),dtype=np.uint8))
-    cnts = cv2.findContours(opening,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)[1]
-    filtered = regionproc.filter_regions_by_location(cnts,(150,50,200,200))
+    #thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,21,3)
+    #opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, np.ones((3,3),dtype=np.uint8))
+    canny = cv2.Canny(gray,100,150)
+    cnts = cv2.findContours(canny,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)[1]
+    filtered = regionproc.filter_regions_by_location(cnts,(150,50,200,170))
     filtered = regionproc.filter_regions_by_area(filtered,20,9500)
 
     return filtered
@@ -182,7 +157,8 @@ def run_detection(imgpath,display):
                     'Radioactive' : np.load("res/ShapeDescriptors/RadioactiveSymbol.npy"),
                     'Toxic'       : np.load("res/ShapeDescriptors/ToxicSymbol.npy"),
                     'Oxidizer'    : np.load("res/ShapeDescriptors/OxidizerSymbol.npy"),
-                    'Explosive'   : np.load("res/ShapeDescriptors/ExplosiveSymbol.npy")
+                    'Explosive'   : np.load("res/ShapeDescriptors/ExplosiveSymbol.npy"),
+                    'Cannister'   : np.load("res/ShapeDescriptors/CannisterSymbol.npy")
                   }
 
     for i, (rectContour,mask) in enumerate(hl_c_m):
@@ -192,20 +168,24 @@ def run_detection(imgpath,display):
 
         (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
         topColors,botColors = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
+
         symbolCnts = find_symbol_cnt(imgROI)
-        symbolPts  = sc.get_points(symbolCnts)
-        symbolDes  = sc.compute_shape_descriptor(symbolPts)
+        if len(symbolCnts) > 0:
+            symbolPts  = sc.get_points(symbolCnts)
+            symbolDes  = sc.compute_shape_descriptor(symbolPts)
 
-        matches = np.array([sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Flame'],symbolDes)),
-                            sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Corrosive'],symbolDes)),
-                            sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Radioactive'],symbolDes)),
-                            sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Toxic'],symbolDes)),
-                            sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Oxidizer'],symbolDes)),
-                            sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Explosive'],symbolDes))
-                            ])
+            matches = np.array([sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Flame'],symbolDes)),
+                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Corrosive'],symbolDes)),
+                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Radioactive'],symbolDes)),
+                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Toxic'],symbolDes)),
+                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Oxidizer'],symbolDes)),
+                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Explosive'],symbolDes)),
+                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Cannister'],symbolDes))
+                                ])
 
-        symbol = list(symbolsDict.keys())[matches.argmin()]
-
+            symbol = list(symbolsDict.keys())[matches.argmin()]
+        else:
+            symbol = "No symbol found"
         #symbolPoints = sc.get_points(imgROI[0:210,:])
         #symbolSC     = sc.compute_shape_descriptor(symbolPoints)
         #print(sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolSC,descriptors['Corrosive'])))
@@ -219,7 +199,9 @@ def run_detection(imgpath,display):
 
         if display:
             tmpVis = np.zeros(imgROI.shape[:2],dtype=np.uint8)
-            cv2.drawContours(tmpVis,symbolCnts,-1,255,1)
+            if len(symbolCnts) > 0:
+                for pts in symbolPts:
+                    tmpVis[pts[1],pts[0]] = 255
             roiVisList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
             textVisList.append(textVis)
             symbolVisList.append(tmpVis)
