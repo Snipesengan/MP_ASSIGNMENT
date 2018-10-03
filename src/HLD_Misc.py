@@ -63,7 +63,7 @@ def calculate_centroid(regions):
     centroids = []
 
     for r in regions:
-        M = cv2.moments(r)
+        M = cv2.moments(cv2.convexHull(r))
         try:
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])

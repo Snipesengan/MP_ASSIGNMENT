@@ -51,9 +51,9 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-def find_text(textImg,config='-l eng -oem 3 -psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
-    cv2.imwrite("test.png",255 - textImg)
-
+def find_text(textImg,config='-l eng -oem1 -psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
+    dilate = cv2.dilate(textImg,np.ones((2,2),dtype=np.uint8),iterations=1)
+    cv2.imwrite("test.png",255 - dilate)
     return pytesseract.image_to_string(Image.open('test.png'),config=config)
 
 def extract_hazard_label_text(roiBGR,tuner):
@@ -66,16 +66,16 @@ def extract_hazard_label_text(roiBGR,tuner):
     blur       = cv2.medianBlur(roiBGR,3,3)
     vThresh    = imgmisc.perform_adaptive_thresh(blur,tuner.threshBlock,tuner.threshC,tuner.threshErode)
     mserRegion = regionproc.find_MSER(vThresh,tuner.minBlobArea,tuner.maxBlobArea,tuner.blobDelta)
-    filtered   = regionproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
-    filtered   = regionproc.filter_overlapping_regions(filtered)
+    eccfiltered   = regionproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
+    filtered   = regionproc.filter_overlapping_regions(eccfiltered)
 
     #FOR LABEL
-    regionCluster = regionproc.approx_homogenous_regions_chain(filtered,3,0.2,0.2,minLength=2)
-    regionCluster = regionproc.sort_left_to_right(regionCluster,roiBGR.shape[0])
+    regionCluster = regionproc.approx_homogenous_regions_chain(filtered,3,0.2,0.2,minLength=1)
+    regionCluster = regionproc.sort_left_to_right(regionCluster)
     for regions in regionCluster:
         space = sum([cv2.boundingRect(r)[2] for r in regions])/len(regions)
         textImg = textproc.space_out_text(roiBGR,regions,space)
-        tessOut =  find_text(textImg)
+        tessOut =  find_text(textImg).upper()
         textTmp = ''.join(re.findall(r"[A-Z]|!",tessOut))
         textVis.append(regions)
 
@@ -92,16 +92,16 @@ def extract_hazard_label_text(roiBGR,tuner):
 
     #FOR CLASS NUMBER
     #get only the bottom regions where the class number is
-    classRegions = regionproc.filter_regions_by_location(mserRegion,(150,350,150,150))
+    classRegions = regionproc.filter_regions_by_location(eccfiltered,(150,350,150,150))
     classRegions = regionproc.filter_regions_by_area(classRegions,150,6000)
     classRegionsCluster = regionproc.approx_homogenous_regions_chain(classRegions,3,1.2,3,minLength=1)
-    classRegionsCluster.sort(key= lambda x: regionproc.calculate_regions_area(x),reverse=True)
-    regions = classRegionsCluster[0]
-    if len(regions) > 0:
+    classRegionsCluster.sort(key= lambda x: regionproc.calculate_regions_area(x,roiBGR.shape[:2]),reverse=True)
+    if len(classRegionsCluster) > 0:
+        regions = classRegionsCluster[0]
         classImg = textproc.space_out_text(roiBGR,regions,10)
-        classImg = transform.translate(classImg,0,-250,classImg.shape)
-        tmp = find_text(classImg,config='-l eng --oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.')
-        matches = re.findall(r"[0-9]|[0-9]\.(?=[0-9])",tmp)
+        classImg = transform.translate(classImg,0,-150,classImg.shape)
+        tmp = find_text(classImg,config='--oem 1 --psm 10 -c tessedit_char_whitelist=0123456789.')
+        matches = re.findall(r"[0-9]|\.(?=[0-9])",tmp)
         classNumber = classNumber + ''.join(matches)
 
     #for visual stuff
@@ -128,8 +128,10 @@ def detect_color(imgROI,mask=None):
 
 def find_symbol_cnt(imgROI):
     gauss = cv2.GaussianBlur(imgROI[:230,:,:],(5,5),0)
-    gray = cv2.cvtColor(gauss,cv2.COLOR_BGR2GRAY)
-    canny = cv2.Canny(gray,100,150)
+    gray = cv2.cvtColor(gauss,cv2.COLOR_BGR2GRAY).astype(float)
+    gray *= 1.5 #improve contrasts a bit
+    gray  = np.clip(gray,0,255)
+    canny = cv2.Canny(gray.astype(np.uint8),50,100)
     cnts = cv2.findContours(canny,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)[1]
     filtered = regionproc.filter_regions_by_location(cnts,(150,50,200,170))
     filtered = regionproc.filter_regions_by_area(filtered,20,9500)
@@ -151,12 +153,8 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
     roiMask = 255 - np.zeros(imgBGR.shape[:-1],dtype=np.uint8)
     imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
     roiMask = transform.perspective_trapezoid_to_rect(roiMask,rectContour,tuner.finalSize,mask)
-
-
     symbolCnts = find_symbol_cnt(imgROI)
-
     if len(symbolCnts) > 0:
-
         symbolPts  = sc.get_points(symbolCnts)
         symbolDesc  = sc.compute_shape_descriptor(symbolPts)
 
@@ -211,7 +209,6 @@ def run_detection(imgpath,display):
     blurred = cv2.GaussianBlur(median,tuner.gaussKSize,tuner.gaussSigmaX)
     hl_c_m = find_region_of_interest(blurred,tuner)
 
-    threads = []
     for i, (rectContour,mask) in enumerate(hl_c_m):
         classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
 

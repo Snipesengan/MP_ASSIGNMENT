@@ -51,9 +51,13 @@ class ShapeContext(object):
     #Cost between two points descriptor
     def _cost(self,g,h):
         cost = 0
+        cost = np.sum(np.divide((g - h)**2,(g + h),where=(g+h) != 0))
+        #cost = np.sum((gCopy - hCopy)**2/(gCopy + hCopy))
+        """
         for k in range(self.nBinsTheta * self.nBinsR):
             if g[k] + h[k]:
                 cost += ((g[k] - h[k])**2)/(g[k] + h[k])
+        """
 
         return 0.5 * cost
 

@@ -19,10 +19,11 @@ def find_MSER(imgray,minArea,maxArea,delta):
 
     return areaFilter
 
-def calculate_regions_area(regions):
-    area = 0
-    for r in regions:
-        area = area + cv2.contourArea(r)
+def calculate_regions_area(regions,shape):
+
+    mask = np.zeros(shape,dtype=np.uint8)
+    cv2.drawContours(mask,regions,-1,255,-1)
+    area = np.bincount(mask.flatten(),minlength=2)[-1]
 
     return area
 
@@ -134,7 +135,7 @@ def filter_overlapping_regions(regions):
 
     return filtered
 
-def sort_left_to_right(cluster,maxWidth):
+def sort_left_to_right(cluster):
     def keyFunc(regions):
         cx,cy = imgmisc.calculate_centroid(regions)
         return math.sqrt(cx**2 + cy**2)

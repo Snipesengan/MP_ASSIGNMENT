@@ -13,8 +13,8 @@ COLOR_RED1_LOWER, COLOR_RED1_UPPER     = np.array([0,35,55]),np.array([4,255,255
 COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,35,55]),np.array([180,255,255])
 COLOR_ORANGE_LOWER, COLOR_ORANGE_UPPER = np.array([7,60,50]),np.array([19,255,255])
 COLOR_YELLOW_LOWER, COLOR_YELLOW_UPPER = np.array([16,120,20]),np.array([30,255,255])
-COLOR_BLUE_LOWER, COLOR_BLUE_UPPER     = np.array([110,109,20]),np.array([120,255,255])
-COLOR_GREEN_LOWER,COLOR_GREEN_UPPER     = np.array([23,0,0]),np.array([85,255,255])
+COLOR_BLUE_LOWER, COLOR_BLUE_UPPER     = np.array([110,89,20]),np.array([120,255,255])
+COLOR_GREEN_LOWER,COLOR_GREEN_UPPER     = np.array([24,0,0]),np.array([85,255,255])
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,60])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,90]),np.array([180,90,255])
 
@@ -55,11 +55,7 @@ def _calculate_color_percent(imgHSV,lower,upper,mask=None):
 
     color = cv2.inRange(imgHSV,lower,upper)
     color = cv2.bitwise_and(color,color,mask=mask)
-
     color_count = np.bincount(color.flatten(),minlength=2)[-1]
-    #print(np.bincount(color.flatten(),minlength=2))
-    #plt.imshow(np.hstack((imgHSV,cv2.cvtColor(cv2.bitwise_and(imgHSV,imgHSV,mask=color),cv2.COLOR_HSV2RGB))))
-    #plt.show()
 
     return float(color_count)/pixel_count
 
