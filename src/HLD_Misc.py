@@ -15,16 +15,16 @@ def display_region(regions,dim):
     plt.imshow(mask,cmap='gray')
     plt.show()
 
-def perform_adaptive_thresh(imgBGR,threshBlock,threshC):
+def perform_adaptive_thresh(imgBGR,threshBlock,threshC,threshErode):
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
 
     h,s,v = cv2.split(imgHSV)
     vThresh = cv2.adaptiveThreshold(v,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
                                     threshBlock,threshC)
     median = cv2.medianBlur(vThresh,3)
-    erode = cv2.erode(median,np.ones((2,2),np.uint8),iterations = 1)
+    erode = cv2.erode(vThresh,threshErode,iterations = 1)
 
-    return median
+    return erode
 
 def get_mask_from_regions(regions,shape):
     mask = np.zeros(shape,np.uint8)

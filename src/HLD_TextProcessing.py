@@ -19,8 +19,10 @@ def space_out_text(imgBGR,textRegions,spaceWidth):
     for i,r in enumerate(textRegions):
         textColor = detect_text_color(gaussThresh,r)
         mask = imgmisc.get_mask_from_regions([r],gaussThresh.shape)
-        if textColor == 'black': gaussThresh = 255 - gaussThresh
-        regionImg = cv2.bitwise_and(gaussThresh,gaussThresh,mask=mask)
+        if textColor == 'black':
+            gaussThresh = 255 - gaussThresh
+        dilate = cv2.erode(gaussThresh,np.ones((1,1),np.uint8),iterations = 1)
+        regionImg = cv2.bitwise_and(dilate,dilate,mask=mask)
 
         x,_,width,_ = cv2.boundingRect(r)
         outImg = outImg + transform.translate(regionImg,currX - x,0,outImg.shape)
@@ -31,14 +33,13 @@ def space_out_text(imgBGR,textRegions,spaceWidth):
 def remove_Gaussian_noise(imgBGR,regions):
     blurSize = int(math.sqrt(sum([cv2.contourArea(r) for r in regions])/len(regions))/1.7) * 2 + 1
     blur   = cv2.GaussianBlur(imgBGR,(blurSize,blurSize),0)
-    thresh = imgmisc.perform_adaptive_thresh(blur,21,2)
+    thresh = imgmisc.perform_adaptive_thresh(blur,21,2,np.ones((1,1),np.uint8))
 
     return thresh
 
 def detect_text_color(textImg,textRegion):
     wordMask = np.zeros(textImg.shape,np.uint8)
     cv2.drawContours(wordMask,[textRegion],0,255,-1)
-    #plt.imshow(wordMask,cmap='gray'),plt.show()
     whiteText = cv2.bitwise_and(textImg,textImg,mask=wordMask)
     blackText = cv2.bitwise_and(255 - textImg,255 - textImg,mask=wordMask)
     if(np.bincount(whiteText.flatten(),minlength=2)[-1] > np.bincount(blackText.flatten(),minlength=2)[-1]):

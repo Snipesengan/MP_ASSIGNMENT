@@ -38,7 +38,7 @@ class ShapeContext(object):
 
         return result
 
-    def get_points(self,cnts,sampleto=150):
+    def get_points(self,cnts,sampleto=130):
         pts = np.array(cnts[0].reshape(-1,2))
         for i in range(1,len(cnts)):
             pts = np.concatenate([pts,np.array(cnts[i].reshape(-1,2))])
@@ -125,6 +125,12 @@ class ShapeContext(object):
 
         return totalCost
 
+    def diff(self,des1,des2):
+        C = self.calc_cost_matrix(des1,des2)
+        totalCost = self.compute_min_cost_greedy(C)
+
+        return totalCost
+
 if __name__ == "__main__":
     imgpath = sys.argv[1]
     #Use this to generate Binary array file for shape descriptor
@@ -136,7 +142,6 @@ if __name__ == "__main__":
     canny = cv2.Canny(img,100,200)
     cnts = cv2.findContours(canny,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)[1]
     pts  = sc.get_points(cnts)
-    #pts  = sc.get_points_from_img(img)
     des  = sc.compute_shape_descriptor(pts)
 
 

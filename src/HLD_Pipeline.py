@@ -11,6 +11,8 @@ import pytesseract
 import sys
 import math
 import re
+import threading
+import time
 
 import HLD_ShapeProc as shapeproc
 import HLD_TextProcessing as textproc
@@ -61,7 +63,8 @@ def extract_hazard_label_text(roiBGR,tuner):
     dictionary = open("dictionary.txt").read().split('\n')
     textVis = []
 
-    vThresh    = imgmisc.perform_adaptive_thresh(roiBGR,tuner.threshBlock,tuner.threshC)
+    blur       = cv2.medianBlur(roiBGR,3,3)
+    vThresh    = imgmisc.perform_adaptive_thresh(blur,tuner.threshBlock,tuner.threshC,tuner.threshErode)
     mserRegion = regionproc.find_MSER(vThresh,tuner.minBlobArea,tuner.maxBlobArea,tuner.blobDelta)
     filtered   = regionproc.filter_regions_by_eccentricity(mserRegion,tuner.maxE)
     filtered   = regionproc.filter_overlapping_regions(filtered)
@@ -89,16 +92,17 @@ def extract_hazard_label_text(roiBGR,tuner):
 
     #FOR CLASS NUMBER
     #get only the bottom regions where the class number is
-    classRegions = regionproc.filter_regions_by_location(filtered,(150,350,150,150))
-    classRegionsCluster = regionproc.approx_homogenous_regions_chain(classRegions,3,0.85,3,minLength=1)
-    for regions in classRegionsCluster:
-        filtered = regionproc.filter_regions_by_area(regions,100,6000)
-        if len(filtered) > 0:
-            classImg = textproc.space_out_text(roiBGR,filtered,10)
-            classImg = transform.translate(classImg,0,-250,classImg.shape)
-            tmp = find_text(classImg,config='-l eng --oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.')
-            matches = re.findall(r"[0-9]|\.(?=[0-9])",tmp)
-            classNumber = classNumber + ''.join(matches)
+    classRegions = regionproc.filter_regions_by_location(mserRegion,(150,350,150,150))
+    classRegions = regionproc.filter_regions_by_area(classRegions,150,6000)
+    classRegionsCluster = regionproc.approx_homogenous_regions_chain(classRegions,3,1.2,3,minLength=1)
+    classRegionsCluster.sort(key= lambda x: regionproc.calculate_regions_area(x),reverse=True)
+    regions = classRegionsCluster[0]
+    if len(regions) > 0:
+        classImg = textproc.space_out_text(roiBGR,regions,10)
+        classImg = transform.translate(classImg,0,-250,classImg.shape)
+        tmp = find_text(classImg,config='-l eng --oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.')
+        matches = re.findall(r"[0-9]|[0-9]\.(?=[0-9])",tmp)
+        classNumber = classNumber + ''.join(matches)
 
     #for visual stuff
     vis = cv2.cvtColor(vThresh,cv2.COLOR_GRAY2RGB)
@@ -125,8 +129,6 @@ def detect_color(imgROI,mask=None):
 def find_symbol_cnt(imgROI):
     gauss = cv2.GaussianBlur(imgROI[:230,:,:],(5,5),0)
     gray = cv2.cvtColor(gauss,cv2.COLOR_BGR2GRAY)
-    #thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,21,3)
-    #opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, np.ones((3,3),dtype=np.uint8))
     canny = cv2.Canny(gray,100,150)
     cnts = cv2.findContours(canny,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)[1]
     filtered = regionproc.filter_regions_by_location(cnts,(150,50,200,170))
@@ -134,82 +136,91 @@ def find_symbol_cnt(imgROI):
 
     return filtered
 
+def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display=False):
+    tuner = HLD_Tuner.Tuner()
+    sc    = ShapeContext.ShapeContext()
+    symbolsDes = [('FLAME',np.load("res/ShapeDescriptors/FlameSymbol.npy")),
+                  ('CORROSIVE',np.load("res/ShapeDescriptors/CorrosiveSymbol.npy")),
+                  ('RADIOACTIVE',np.load("res/ShapeDescriptors/RadioactiveSymbol.npy")),
+                  ('TOXIC',np.load("res/ShapeDescriptors/ToxicSymbol.npy")),
+                  ('OXIDIZER',np.load("res/ShapeDescriptors/OxidizerSymbol.npy")),
+                  ('EXPLOSIVE',np.load("res/ShapeDescriptors/ExplosiveSymbol.npy")),
+                  ('CANNISTER',np.load("res/ShapeDescriptors/CannisterSymbol.npy"))
+                  ]
+
+    roiMask = 255 - np.zeros(imgBGR.shape[:-1],dtype=np.uint8)
+    imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
+    roiMask = transform.perspective_trapezoid_to_rect(roiMask,rectContour,tuner.finalSize,mask)
+
+
+    symbolCnts = find_symbol_cnt(imgROI)
+
+    if len(symbolCnts) > 0:
+
+        symbolPts  = sc.get_points(symbolCnts)
+        symbolDesc  = sc.compute_shape_descriptor(symbolPts)
+
+        costdict = {desc[0]:None for desc in symbolsDes}
+        for desc in symbolsDes:
+            costdict[desc[0]] = sc.diff(desc[1],symbolDesc)
+
+        #making sure all threads finished
+        costs = [(k,v) for k,v in costdict.items()]
+        costs.sort(key=lambda x:x[1])
+        if costs[0][1] < tuner.maxSymbolCost:
+            symbol = costs[0][0]
+            (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
+            topColors,botColors = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
+            print("TOP         : " + list(topColors.keys())[0])
+            print("BOTTOM      : " + list(botColors.keys())[0])
+            print("LABEL       : " + label)
+            print("CLASS NUMBER: " + classNo)
+            print("SYMBOL      : " + symbol)
+            print("")
+
+            if display:
+
+                tmpVis = np.zeros(imgROI.shape[:2],dtype=np.uint8)
+
+                if len(symbolCnts) > 0:
+                    for pts in symbolPts:
+                        tmpVis[pts[1],pts[0]] = 255
+
+                roiVisList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
+                textVisList.append(textVis)
+                symbolVisList.append(tmpVis)
+    else:
+        symbol = "No symbol found"
+
+
+    return None
+
 #find the contours of this image
 #The main pipe line
 def run_detection(imgpath,display):
+    startTime = time.time()
+    #For displaying stuff
+    roiVisList = []
+    textVisList = []
+    symbolVisList = []
+
     tuner = HLD_Tuner.Tuner()
-    sc    = ShapeContext.ShapeContext()
-
-    if display:
-        textVisList = []
-        roiVisList = []
-        symbolVisList = []
-
     imgBGR = cv2.imread(imgpath)
     imgray = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2GRAY)
-
     median = cv2.medianBlur(imgray,tuner.medianKSize)
     blurred = cv2.GaussianBlur(median,tuner.gaussKSize,tuner.gaussSigmaX)
     hl_c_m = find_region_of_interest(blurred,tuner)
-    symbolsDict = {
-                    'Flame'       : np.load("res/ShapeDescriptors/FlameSymbol.npy"),
-                    'Corrosive'   : np.load("res/ShapeDescriptors/CorrosiveSymbol.npy"),
-                    'Radioactive' : np.load("res/ShapeDescriptors/RadioactiveSymbol.npy"),
-                    'Toxic'       : np.load("res/ShapeDescriptors/ToxicSymbol.npy"),
-                    'Oxidizer'    : np.load("res/ShapeDescriptors/OxidizerSymbol.npy"),
-                    'Explosive'   : np.load("res/ShapeDescriptors/ExplosiveSymbol.npy"),
-                    'Cannister'   : np.load("res/ShapeDescriptors/CannisterSymbol.npy")
-                  }
 
+    threads = []
     for i, (rectContour,mask) in enumerate(hl_c_m):
-        roiMask = 255 - np.zeros(imgBGR.shape[:-1],dtype=np.uint8)
-        imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
-        roiMask = transform.perspective_trapezoid_to_rect(roiMask,rectContour,tuner.finalSize,mask)
+        classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
 
-        (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
-        topColors,botColors = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
-
-        symbolCnts = find_symbol_cnt(imgROI)
-        if len(symbolCnts) > 0:
-            symbolPts  = sc.get_points(symbolCnts)
-            symbolDes  = sc.compute_shape_descriptor(symbolPts)
-
-            matches = np.array([sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Flame'],symbolDes)),
-                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Corrosive'],symbolDes)),
-                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Radioactive'],symbolDes)),
-                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Toxic'],symbolDes)),
-                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Oxidizer'],symbolDes)),
-                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Explosive'],symbolDes)),
-                                sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolsDict['Cannister'],symbolDes))
-                                ])
-
-            symbol = list(symbolsDict.keys())[matches.argmin()]
-        else:
-            symbol = "No symbol found"
-        #symbolPoints = sc.get_points(imgROI[0:210,:])
-        #symbolSC     = sc.compute_shape_descriptor(symbolPoints)
-        #print(sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolSC,descriptors['Corrosive'])))
-        #print(sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolSC,descriptors['Flame'])))
-        #print(sc.compute_min_cost_greedy(sc.calc_cost_matrix(symbolSC,descriptors['Radioactive'])))
-        print("TOP         : " + list(topColors.keys())[0])
-        print("BOTTOM      : " + list(botColors.keys())[0])
-        print("LABEL       : " + label)
-        print("CLASS NUMBER: " + classNo)
-        print("SYMBOL      : " + symbol)
-
-        if display:
-            tmpVis = np.zeros(imgROI.shape[:2],dtype=np.uint8)
-            if len(symbolCnts) > 0:
-                for pts in symbolPts:
-                    tmpVis[pts[1],pts[0]] = 255
-            roiVisList.append(cv2.cvtColor(imgROI,cv2.COLOR_BGR2RGB))
-            textVisList.append(textVis)
-            symbolVisList.append(tmpVis)
-
-    #now sanity check the text list
+    elapsed = time.time() - startTime
+    print("Finished in %.3fs"%(elapsed))
     if display:
         plt.figure("Input Image")
         plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
+
         if len(roiVisList) > 0:
             plt.figure("Detecting hazard label")
             plt.imshow(np.hstack(tuple(roiVisList)))
@@ -221,6 +232,8 @@ def run_detection(imgpath,display):
             print("No ROI found")
 
         plt.show()
+
+
 
 if __name__ == '__main__':
     if(len(sys.argv) < 2):

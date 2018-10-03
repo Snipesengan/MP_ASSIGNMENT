@@ -30,7 +30,11 @@ class Tuner:
         self._blobDelta     = 250
         self._threshBlock   = 35
         self._threshC       = 3
+        self._threshErode   = np.ones((2,2),np.uint8)
         self._maxE          = 0.95
+        #Symbol
+        self._maxSymbolCost = 45
+
 
     #Lets make setter and getters for these things lmao, python sucks at OO
     def medianKSize():
@@ -221,6 +225,17 @@ class Tuner:
         return locals()
     threshC = property(**threshC())
 
+    def threshErode():
+        doc = "The_threshErode property."
+        def fget(self):
+            return self._threshErode
+        def fset(self, value):
+            self._threshErode = value
+        def fdel(self):
+            del self._threshErode
+        return locals()
+    threshErode = property(**threshErode())
+
     def maxE():
         doc = "Thee property."
         def fget(self):
@@ -231,3 +246,14 @@ class Tuner:
             del self._maxE
         return locals()
     maxE = property(**maxE())
+
+    def maxSymbolCost():
+        doc = "The_maxSymbolCost property."
+        def fget(self):
+            return self._maxSymbolCost
+        def fset(self, value):
+            self._maxSymbolCost = value
+        def fdel(self):
+            del self._maxSymbolCost
+        return locals()
+    maxSymbolCost = property(**maxSymbolCost())
