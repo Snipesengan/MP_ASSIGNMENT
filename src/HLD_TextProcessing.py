@@ -30,11 +30,10 @@ def space_out_text(imgBGR,textRegions,spaceWidth):
         textColor = detect_text_color(gaussThresh,r)
         if textColor == 'black':
             gaussThresh = 255 - gaussThresh
-        dilate = cv2.erode(gaussThresh,np.ones((1,1),np.uint8),iterations = 1)
-
+        erode = cv2.erode(gaussThresh,np.ones((2,2),np.uint8),iterations = 1)
         #Apply the mask using the region and translate the region to the appropriate location
         mask = imgmisc.get_mask_from_regions([r],gaussThresh.shape)
-        regionImg = cv2.bitwise_and(dilate,dilate,mask=mask)
+        regionImg = cv2.bitwise_and(erode,erode,mask=mask)
         x,_,width,_ = cv2.boundingRect(r)
         outImg = outImg + transform.translate(regionImg,currX - x,0,outImg.shape)
         currX = currX + width + spaceWidth

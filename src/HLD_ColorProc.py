@@ -37,12 +37,14 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     red_percent = red1 + red2
     colormap['red'] = red_percent
 
+    colorTup = []
     #Sort the colors cuz why not
-    sortcolor = list(colormap.keys())
-    sortcolor.sort(key = lambda x: colormap[x],reverse=True)
-    sortedmap = {key: "%.3f"%(colormap[key]*100) for key in sortcolor}
+    for color,percent in colormap.items():
+        colorTup.append((color,percent))
+		
+        colorTup.sort(key=lambda x: x[1],reverse=True)
 
-    return sortedmap #key: color, value: (colorpercentage,colormask)
+    return colorTup
 
 
 #Calculate the percentage of that color and its mask

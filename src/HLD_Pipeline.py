@@ -51,9 +51,9 @@ def find_region_of_interest(imgray,tuner):
 
     return hazardlabels_contours_mask
 
-def find_text(textImg,config='-l eng -oem1 -psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
-    dilate = cv2.dilate(textImg,np.ones((2,2),dtype=np.uint8),iterations=1)
-    cv2.imwrite("test.png",255 - dilate)
+def find_text(textImg,config='-l eng -psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
+    erode = cv2.erode(textImg,np.ones((2,2),dtype=np.uint8),iterations=1)
+    cv2.imwrite("test.png",255 - erode)
     return pytesseract.image_to_string(Image.open('test.png'),config=config)
 
 def extract_hazard_label_text(roiBGR,tuner):
@@ -100,7 +100,7 @@ def extract_hazard_label_text(roiBGR,tuner):
         regions = classRegionsCluster[0]
         classImg = textproc.space_out_text(roiBGR,regions,10)
         classImg = transform.translate(classImg,0,-150,classImg.shape)
-        tmp = find_text(classImg,config='--oem 1 --psm 10 -c tessedit_char_whitelist=0123456789.')
+        tmp = find_text(classImg,config='-psm 6 -c tessedit_char_whitelist=0123456789.')
         matches = re.findall(r"[0-9]|\.(?=[0-9])",tmp)
         classNumber = classNumber + ''.join(matches)
 
@@ -121,10 +121,10 @@ def extract_hazard_label_text(roiBGR,tuner):
 def detect_color(imgROI,mask=None):
     topMap = colorproc.calculate_color_percentage(imgROI[0:250,...],mask[0:250,...])
     botMap = colorproc.calculate_color_percentage(imgROI[250:499,...],mask[250:499,...])
-    topColor = list(topMap.keys())[0]
-    botColor = list(botMap.keys())[0]
-
-    return topMap,botMap
+    topColor = topMap[0][0]
+    botColor = botMap[0][0]
+    
+    return topColor,botColor
 
 def find_symbol_cnt(imgROI):
     gauss = cv2.GaussianBlur(imgROI[:230,:,:],(5,5),0)
@@ -168,9 +168,9 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
         if costs[0][1] < tuner.maxSymbolCost:
             symbol = costs[0][0]
             (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
-            topColors,botColors = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
-            print("TOP         : " + list(topColors.keys())[0])
-            print("BOTTOM      : " + list(botColors.keys())[0])
+            topColor,botColor = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
+            print("TOP         : " + topColor)
+            print("BOTTOM      : " + botColor)
             print("LABEL       : " + label)
             print("CLASS NUMBER: " + classNo)
             print("SYMBOL      : " + symbol)
@@ -209,14 +209,23 @@ def run_detection(imgpath,display):
     blurred = cv2.GaussianBlur(median,tuner.gaussKSize,tuner.gaussSigmaX)
     hl_c_m = find_region_of_interest(blurred,tuner)
 
+    threads = []
     for i, (rectContour,mask) in enumerate(hl_c_m):
-        classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
+        args = (imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display,)
+        t = threading.Thread(target=classify_label, args=args)
+        t.start()
+        threads.append(t)
+        
+    for t in threads:
+        while t.is_alive():
+            time.sleep(0.02)
 
     elapsed = time.time() - startTime
     print("Finished in %.3fs"%(elapsed))
     if display:
         plt.figure("Input Image")
         plt.imshow(cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB))
+        plt.imshow(np.hstack((cv2.cvtColor(imgBGR,cv2.COLOR_BGR2RGB),cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV))))
 
         if len(roiVisList) > 0:
             plt.figure("Detecting hazard label")

@@ -52,12 +52,6 @@ class ShapeContext(object):
     def _cost(self,g,h):
         cost = 0
         cost = np.sum(np.divide((g - h)**2,(g + h),where=(g+h) != 0))
-        #cost = np.sum((gCopy - hCopy)**2/(gCopy + hCopy))
-        """
-        for k in range(self.nBinsTheta * self.nBinsR):
-            if g[k] + h[k]:
-                cost += ((g[k] - h[k])**2)/(g[k] + h[k])
-        """
 
         return 0.5 * cost
 
@@ -125,7 +119,7 @@ class ShapeContext(object):
             minIdx = C.argmin()
             totalCost = totalCost + C[int(minIdx/row),minIdx%row]
             #Remove potential of going to this particular point again
-            C[:,minIdx%row] = math.inf
+            C[:,minIdx%row] = float("inf")
 
         return totalCost
 
