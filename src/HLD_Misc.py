@@ -15,21 +15,30 @@ def display_region(regions,dim):
     plt.imshow(mask,cmap='gray')
     plt.show()
 
+#Imports: Image, threshold values
+#Exports a adaptive threshed image
 def perform_adaptive_thresh(imgBGR,threshBlock,threshC,threshErode):
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
 
+    #Adaptive thresholding is performed on the v channel of HSV to remove
+    #shadow. Because we want to binarize regions with varying light intensity
+    #rather than saturation or color. This is because the feature we are extracting
+    #Are text and symbols which in this case does not vary much in hue but rather
+    #intensity
     h,s,v = cv2.split(imgHSV)
     vThresh = cv2.adaptiveThreshold(v,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,
                                     threshBlock,threshC)
+
+    #Apply median and erosion to remove noise
     median = cv2.medianBlur(vThresh,3)
     erode = cv2.erode(vThresh,threshErode,iterations = 1)
 
     return erode
 
+#Imports MSER region and the output shape of the mask
 def get_mask_from_regions(regions,shape):
     mask = np.zeros(shape,np.uint8)
     #for regions with holes in them
-
     cv2.drawContours(mask,regions,-1,255,1)
     return mask
 
@@ -58,6 +67,8 @@ def calculate_solidity(regions):
 
     return (regionArea/boxArea) * 100
 
+#calculate the centroid of the region (center point)
+#this is used to sort regions from left to right
 def calculate_centroid(regions):
 
     centroids = []

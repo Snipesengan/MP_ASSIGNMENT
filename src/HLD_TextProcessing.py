@@ -9,7 +9,10 @@ import HLD_Misc as imgmisc
 import HLD_RegionsProc as regionproc
 import HLD_Transform as transform
 
-def space_out_text(imgBGR,textRegions,spaceWidth):
+
+#Imports an image,regions where theres text, and space to put between characters
+#Exports corrected image
+def correct_text_regions(imgBGR,textRegions,spaceWidth):
 
     #Sorts the x coordinate, positioning the regions from left to right
     textRegions.sort(key = lambda r: cv2.boundingRect(r)[0])
@@ -40,15 +43,20 @@ def space_out_text(imgBGR,textRegions,spaceWidth):
 
     return outImg
 
+#This function removes some noise baed on the region and binarize it.
 def remove_Gaussian_noise(imgBGR,regions):
+    #blur the region before adaptive thresholding, the size of the adaptive threshold is dependant
+    #on the size of regions
     blurSize = int(math.sqrt(sum([cv2.contourArea(r) for r in regions])/len(regions))/1.7) * 2 + 1
     blur   = cv2.GaussianBlur(imgBGR,(blurSize,blurSize),0)
     median = cv2.medianBlur(blur,3)
+    #binarization
     thresh = imgmisc.perform_adaptive_thresh(median,35,2,np.ones((0,0),np.uint8))
-
 
     return thresh
 
+#Imports an image and text region
+#Export either black or white based on color of text
 def detect_text_color(textImg,textRegion):
     wordMask = np.zeros(textImg.shape,np.uint8)
     cv2.drawContours(wordMask,[textRegion],0,255,-1)
@@ -61,6 +69,9 @@ def detect_text_color(textImg,textRegion):
 
     return textColor
 
+
+#Find the longest common sunstring between two point, taken from
+#https://www.bogotobogo.com/python/python_longest_common_substring_lcs_algorithm_generalized_suffix_tree.php
 def find_LCS(S,T):
     m = len(S)
     n = len(T)

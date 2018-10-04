@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import math
 import HLD_Misc as imgmisc
 
-
+#Finds Maximally Stable Extremal Regions
 def find_MSER(imgray,minArea,maxArea,delta):
 
     mser = cv2.MSER_create()
@@ -13,19 +13,22 @@ def find_MSER(imgray,minArea,maxArea,delta):
     mser.setMinArea(minArea)
     mser.setDelta(delta)
 
+    #Filter the regions based on their area
     regions, _ = mser.detectRegions(imgray)
     hulls = [cv2.convexHull(p.reshape(-1,1,2)) for p in regions]
     areaFilter = [regions[i] for i,r in enumerate(hulls) if (cv2.contourArea(r) > minArea and cv2.contourArea(r) < maxArea)]
 
     return areaFilter
 
+#Calculate the total area of multiple regions
 def calculate_regions_area(regions,shape):
-
+    #Note that areas are number of pixels
     mask = np.zeros(shape,dtype=np.uint8)
     cv2.drawContours(mask,regions,-1,255,-1)
     area = np.bincount(mask.flatten(),minlength=2)[-1]
 
     return area
+
 
 def filter_regions_by_solidty(regions,minSolidity,maxSolidity):
     filtered = []
@@ -40,6 +43,7 @@ def filter_regions_by_solidty(regions,minSolidity,maxSolidity):
 
     return filtered
 
+#filter regions by min and max area
 def filter_regions_by_area(regions,minArea,maxArea):
     filtered = []
 
@@ -50,7 +54,7 @@ def filter_regions_by_area(regions,minArea,maxArea):
 
     return filtered
 
-
+#filter regions by their eccentricity
 def filter_regions_by_eccentricity(regions,maxEccentricity):
 
     filtered = []
@@ -65,6 +69,7 @@ def filter_regions_by_eccentricity(regions,maxEccentricity):
 
     return filtered
 
+#filter regions by their location has to be within (x1,y1,x2,y2)
 def filter_regions_by_location(regions,rect):
     x1,y1,w1,h1 = rect
     filtered = []
@@ -75,11 +80,13 @@ def filter_regions_by_location(regions,rect):
 
     return filtered
 
+#Cluster regions together based on the similarity in height, y coord, x coord
 def approx_homogenous_regions_chain(regions,deltaX,deltaY,C,minLength=2):
     getKey = lambda x: str(cv2.minEnclosingCircle(x)[0])
     visited = set()
     clusters = []
     keepgoing = True
+    #This uses a depth first search algorithm that groups regions together
     while len(visited) < len(regions):
         unvisited = [r for r in regions if not getKey(r) in visited]
         unvisited.sort(key = lambda x: cv2.boundingRect(x)[3])
@@ -91,6 +98,7 @@ def approx_homogenous_regions_chain(regions,deltaX,deltaY,C,minLength=2):
 
     return clusters
 
+#Depth first search algorithm that queues together regions with similar height,ycoord,xcoord
 def _DFS(currNode,regions,visited,deltaX,deltaY,C,cluster):
     getKey = lambda x: str(cv2.minEnclosingCircle(x)[0])
     visited.add(getKey(currNode))
@@ -100,6 +108,7 @@ def _DFS(currNode,regions,visited,deltaX,deltaY,C,cluster):
         if not getKey(nextNode) in visited:
             _DFS(nextNode,regions,visited,deltaX,deltaY,C,cluster)
 
+#Returns a lists of regions that are similar (used by _DFS)
 def find_Nearest_Homogenous_Regions(currNode,regions,deltaX,deltaY,C):
     x,y,w,h = cv2.boundingRect(currNode)
     rect = (x-deltaX*w,y-deltaY*h,(2*deltaX+1)*w,(2*deltaY+1)*h)
@@ -109,6 +118,7 @@ def find_Nearest_Homogenous_Regions(currNode,regions,deltaX,deltaY,C):
 
     return nearbys
 
+#Filter overlapping regions
 def filter_overlapping_regions(regions):
 
     filtered = []
@@ -135,6 +145,7 @@ def filter_overlapping_regions(regions):
 
     return filtered
 
+#Sorts regions from left to right
 def sort_left_to_right(cluster):
     def keyFunc(regions):
         cx,cy = imgmisc.calculate_centroid(regions)

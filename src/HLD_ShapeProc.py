@@ -22,6 +22,7 @@ def filter_rectangles(contours,epsilon):
 
     return rects
 
+#Import contors and filter by area
 def filter_contour_area(contours,minArea,maxArea):
 
     filtered = None
@@ -34,6 +35,7 @@ def filter_contour_area(contours,minArea,maxArea):
 
     return filtered
 
+#Imports contours and filter by overlapping contours
 def filter_overlaping_contour(contours):
 
     filtered = []
@@ -60,13 +62,16 @@ def filter_overlaping_contour(contours):
 
     return filtered
 
-
+#Finds contour
 def find_contours(imgray,cannyMin,cannyMax,morphKernel,mask=None):
 
+    #applying a mask if there is a mask
     imgray = cv2.bitwise_and(imgray,imgray,mask=mask)
+    #FInd canny edge image
     canny = cv2.Canny(imgray,cannyMin,cannyMax)
+    #morph close to remove some noise
     closing = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, morphKernel)
+    #find the contours
     res,contours,hierachy = cv2.findContours(closing,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
 
     return res,contours,hierachy

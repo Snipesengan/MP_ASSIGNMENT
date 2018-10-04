@@ -4,7 +4,7 @@ import numpy as np
 
 class Tuner:
     """
-        Hazard labels detector tuner
+        Hazard labels detector tuner, this contains values that can be tuned to better detect
     """
 
     def __init__(self):
@@ -32,6 +32,7 @@ class Tuner:
         self._threshC       = 3
         self._threshErode   = np.ones((2,2),np.uint8)
         self._maxE          = 0.95
+        
         #Symbol
         self._maxSymbolCost = 45
 

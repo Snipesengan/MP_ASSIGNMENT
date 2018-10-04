@@ -8,6 +8,9 @@ import sys
 import HLD_ShapeProc as shapeproc
 import HLD_Misc as imgmisc
 
+# This is an adaption of creotiv's shape context, I removed the rotation invariancy code and
+# improve the speed of calculating the cost between histogram bins
+# https://github.com/creotiv/computer_vision/blob/master/shape_context/shape_context.py
 class ShapeContext(object):
 
     def __init__(self,nBinsR=5,nBinsTheta=12,rInner=0.1250,rOuter=2):
@@ -72,7 +75,6 @@ class ShapeContext(object):
         return C
 
     def compute_shape_descriptor(self,points):
-
         numPts = len(points)
 
         #Get the relative distance array where arr[i,j] is relative dist from Pi to Pj
@@ -131,12 +133,8 @@ class ShapeContext(object):
 
 if __name__ == "__main__":
     imgpath = sys.argv[1]
-    #Use this to generate Binary array file for shape descriptor
     sc = ShapeContext()
     img  = cv2.imread(sys.argv[1],0)
-    #gauss = cv2.GaussianBlur(img,(5,5),0)
-    #thresh = imgmisc.perform_adaptive_thresh(gauss,35,2)
-    #opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, np.ones((3,3),dtype=np.uint8))
     canny = cv2.Canny(img,100,200)
     cnts = cv2.findContours(canny,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)[1]
     pts  = sc.get_points(cnts)

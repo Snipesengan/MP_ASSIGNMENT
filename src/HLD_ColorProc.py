@@ -9,6 +9,7 @@ import math
 import re
 
 
+#Boundary values for color in the HSV color space
 COLOR_RED1_LOWER, COLOR_RED1_UPPER     = np.array([0,35,55]),np.array([4,255,255])
 COLOR_RED2_LOWER, COLOR_RED2_UPPER     = np.array([170,35,55]),np.array([180,255,255])
 COLOR_ORANGE_LOWER, COLOR_ORANGE_UPPER = np.array([7,60,50]),np.array([19,255,255])
@@ -18,8 +19,11 @@ COLOR_GREEN_LOWER,COLOR_GREEN_UPPER     = np.array([24,0,0]),np.array([85,255,25
 COLOR_BLACK_LOWER, COLOR_BLACK_UPPER   = np.array([0,0,0]),np.array([180,255,60])
 COLOR_WHITE_LOWER, COLOR_WHITE_UPPER   = np.array([0,0,90]),np.array([180,90,255])
 
+#Imports an image
+#Exports a color map, which contains the percentage of color in the list above
 def calculate_color_percentage(imgBGR,mask=None,display=False):
 
+    #Convert color to HSV, the reason is explained in the documentation
     imgHSV = cv2.cvtColor(imgBGR,cv2.COLOR_BGR2HSV)
     colormap = {}
 
@@ -41,15 +45,12 @@ def calculate_color_percentage(imgBGR,mask=None,display=False):
     #Sort the colors cuz why not
     for color,percent in colormap.items():
         colorTup.append((color,percent))
-		
         colorTup.sort(key=lambda x: x[1],reverse=True)
 
     return colorTup
 
-
-#Calculate the percentage of that color and its mask
+#Calculate the percentage of that color and its mask based on the upper and lower bound values
 def _calculate_color_percent(imgHSV,lower,upper,mask=None):
-
     if type(mask) is np.ndarray:
         pixel_count = (mask != 0).sum()
     else:
@@ -60,7 +61,3 @@ def _calculate_color_percent(imgHSV,lower,upper,mask=None):
     color_count = np.bincount(color.flatten(),minlength=2)[-1]
 
     return float(color_count)/pixel_count
-
-if __name__ == "__main__":
-    img = cv2.imread(sys.argv[1])
-    color_correction(img)

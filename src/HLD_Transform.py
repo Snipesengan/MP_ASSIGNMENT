@@ -4,10 +4,14 @@ import tkinter
 import matplotlib.pyplot as plt
 import math
 
+
+#Imports image,contour,and the final size of the perspective correction
+#Exports the perspective corrected image
 def perspective_trapezoid_to_rect(imgBGR,rectContour,finalSize,mask=None):
 
     imgROI = cv2.bitwise_and(imgBGR,imgBGR,mask=mask)
 
+    #Get the corner points (extreme points) of the contour
     leftmost = tuple(rectContour[rectContour[:,:,0].argmin()][0])
     rightmost = tuple(rectContour[rectContour[:,:,0].argmax()][0])
     topmost = tuple(rectContour[rectContour[:,:,1].argmin()][0])
@@ -23,11 +27,14 @@ def perspective_trapezoid_to_rect(imgBGR,rectContour,finalSize,mask=None):
                            [finalSize[0]/2,0],
                            [finalSize[0],finalSize[1]/2]])
 
+    #Peform the perspective correction
     M = cv2.getPerspectiveTransform(fromPoints,toPoints)
     des = cv2.warpPerspective(imgROI,M,finalSize)
 
     return des
 
+#Import an image and values to translate in the x or y direction
+#Export translated image
 def translate(img,dx,dy,shape):
     M = np.float32([[1,0,dx],[0,1,dy]])
     dst = cv2.warpAffine(img,M,(shape[1],shape[0]))
