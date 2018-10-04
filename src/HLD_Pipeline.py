@@ -58,8 +58,8 @@ def find_text(textImg,config='-l eng -psm 7 -c tessedit_char_whitelist=ABCDEFGHI
 
 def extract_hazard_label_text(roiBGR,tuner):
 
-    text = ""
-    classNumber = ""
+    text = "(None)"
+    classNumber = "(None)"
     dictionary = open("dictionary.txt").read().split('\n')
     textVis = []
 
@@ -144,7 +144,7 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
     symbolsDes = [('FLAME',np.load("res/ShapeDescriptors/FlameSymbol.npy")),
                   ('CORROSIVE',np.load("res/ShapeDescriptors/CorrosiveSymbol.npy")),
                   ('RADIOACTIVE',np.load("res/ShapeDescriptors/RadioactiveSymbol.npy")),
-                  ('TOXIC',np.load("res/ShapeDescriptors/ToxicSymbol.npy")),
+                  ('SKULL & BONES',np.load("res/ShapeDescriptors/ToxicSymbol.npy")),
                   ('OXIDIZER',np.load("res/ShapeDescriptors/OxidizerSymbol.npy")),
                   ('EXPLOSIVE',np.load("res/ShapeDescriptors/ExplosiveSymbol.npy")),
                   ('CANNISTER',np.load("res/ShapeDescriptors/CannisterSymbol.npy"))
@@ -171,8 +171,8 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
             topColor,botColor = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
             print("TOP         : " + topColor)
             print("BOTTOM      : " + botColor)
+			print("CLASS NUMBER: " + classNo)
             print("LABEL       : " + label)
-            print("CLASS NUMBER: " + classNo)
             print("SYMBOL      : " + symbol)
             print("")
 
@@ -209,16 +209,9 @@ def run_detection(imgpath,display):
     blurred = cv2.GaussianBlur(median,tuner.gaussKSize,tuner.gaussSigmaX)
     hl_c_m = find_region_of_interest(blurred,tuner)
 
-    threads = []
     for i, (rectContour,mask) in enumerate(hl_c_m):
-        args = (imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display,)
-        t = threading.Thread(target=classify_label, args=args)
-        t.start()
-        threads.append(t)
-        
-    for t in threads:
-        while t.is_alive():
-            time.sleep(0.02)
+        classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
+
 
     elapsed = time.time() - startTime
     print("Finished in %.3fs"%(elapsed))
