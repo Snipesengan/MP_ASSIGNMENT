@@ -65,7 +65,7 @@ def find_region_of_interest(imgray,tuner):
 
 #Import: an image containing text to be read by Tesseract
 #Export: The output of Tesseract
-def find_text(textImg,config='-l eng -psm 7 -c tessedit_char_whitelist\
+def find_text(textImg,config='-l eng --psm 7 -c tessedit_char_whitelist=\
               ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
     #Erode the text to better allow tesseract to detect, this may be
     # a bug/internal operations that requires big text to be eroded
@@ -111,6 +111,7 @@ def extract_hazard_label_text(roiBGR,tuner):
         space = sum([cv2.boundingRect(r)[2] for r in regions])/len(regions)
         #correct the text; space them out and make black text white
         textImg = textproc.correct_text_regions(roiBGR,regions,space)
+        cv2.imwrite("Text.png",textImg)
         tessOut =  find_text(textImg).upper()
         textTmp = ''.join(re.findall(r"[A-Z]|!",tessOut))
         textVis.append(regions)
@@ -124,8 +125,16 @@ def extract_hazard_label_text(roiBGR,tuner):
                 lcs = textproc.find_LCS(textTmp,words)
                 if len(lcs) > 0:
                     tmp = lcs.pop()
-                if len(tmp) > len(longest): longest = tmp
+                    if len(tmp) > len(longest): longest = tmp
             if len(longest) >= 3:
+                #Cases where text appears joined together
+                if textTmp == 'FLAMMABLEGAS':
+                    textTmp = 'FLAMMABLE GAS'
+                elif textTmp == 'NONFLAMMABLEGAS':
+                    textTmp = 'NON-FLAMMABLE GAS'
+                elif textTmp == 'ORGANICPEROXIDE':
+                    textTmp = 'ORGANIC PEROXIDE'
+
                 text = text + textTmp + ' '
 
     #Strip spaces
@@ -140,9 +149,9 @@ def extract_hazard_label_text(roiBGR,tuner):
     classRegionsCluster.sort(key= lambda x: regionproc.calculate_regions_area(x,roiBGR.shape[:2]),reverse=True)
     if len(classRegionsCluster) > 0:
         regions = classRegionsCluster[0]
-        classImg = textproc.space_out_text(roiBGR,regions,10)
+        classImg = textproc.correct_text_regions(roiBGR,regions,10)
         classImg = transform.translate(classImg,0,-150,classImg.shape)
-        tmp = find_text(classImg,config='-psm 6 -c tessedit_char_whitelist=0123456789.')
+        tmp = find_text(classImg,config='--psm 6 -c tessedit_char_whitelist=0123456789.')
         #simple sanity checky using regex
         matches = re.findall(r"[0-9]|\.(?=[0-9])",tmp)
         classNumber = classNumber + ''.join(matches)
@@ -202,17 +211,18 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
     symbolsDes = [('FLAME',np.load("res/ShapeDescriptors/FlameSymbol.npy")),
                   ('CORROSIVE',np.load("res/ShapeDescriptors/CorrosiveSymbol.npy")),
                   ('RADIOACTIVE',np.load("res/ShapeDescriptors/RadioactiveSymbol.npy")),
-                  ('SKULL & BONES',np.load("res/ShapeDescriptors/ToxicSymbol.npy")),
+                  ('SKULL & BONES ON BLACK DIAMOND',np.load("res/ShapeDescriptors/ToxicSymbol.npy")),
                   ('OXIDIZER',np.load("res/ShapeDescriptors/OxidizerSymbol.npy")),
                   ('EXPLOSIVE',np.load("res/ShapeDescriptors/ExplosiveSymbol.npy")),
-                  ('CANNISTER',np.load("res/ShapeDescriptors/CannisterSymbol.npy"))
+                  ('CANNISTER',np.load("res/ShapeDescriptors/CannisterSymbol.npy")),
+                  ('1.5',np.load("res/ShapeDescriptors/1_5.npy")),
+                  ('1.6',np.load("res/ShapeDescriptors/1_6.npy"))
                   ]
 
     #Perspective correct the image
     roiMask = 255 - np.zeros(imgBGR.shape[:-1],dtype=np.uint8)
     roiMask = transform.perspective_trapezoid_to_rect(roiMask,rectContour,tuner.finalSize,mask)
     imgROI = transform.perspective_trapezoid_to_rect(imgBGR,rectContour,tuner.finalSize,mask)
-
     #Find symbol contour
     symbolCnts = find_symbol_cnt(imgROI)
     #If there is no symbol (sanity; images must have a symbol)
@@ -234,6 +244,11 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
             symbol = costs[0][0]
             (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
             topColor,botColor = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
+            print("Top          : %s"%(topColor))
+            print("Bottom       : %s"%(botColor))
+            print("Class Number : %s"%(classNo))
+            print("Label Text   : %s"%(label))
+            print("Symbol       : %s"%(symbol))
 
             #For displaying
             if display:
@@ -248,7 +263,7 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
         symbol = "No symbol found"
 
 
-    return topColor,botColor,classNo,label,symbol
+    return
 
 #find the contours of this image
 #The main pipe line
@@ -270,12 +285,7 @@ def run_detection(imgpath,display):
 
     #Go through each label and classify them
     for i, (rectContour,mask) in enumerate(hl_c_m):
-        topColor,botColor,classNo,label,symbol = classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
-        print("Top          : %s"%(topColor))
-        print("Bottom       : %s"%(botColor))
-        print("Class Number : %s"%(classNo))
-        print("Label Text   : %s"%(label))
-        print("Symbol       : %s"%(symbol))
+        classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
 
     elapsed = time.time() - startTime
     print("Finished in %.3fs"%(elapsed))
