@@ -65,7 +65,7 @@ def find_region_of_interest(imgray,tuner):
 
 #Import: an image containing text to be read by Tesseract
 #Export: The output of Tesseract
-def find_text(textImg,config='-l eng --psm 7 -c tessedit_char_whitelist=\
+def find_text(textImg,config='-l eng -psm 7 -c tessedit_char_whitelist=\
               ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
     #Erode the text to better allow tesseract to detect, this may be
     # a bug/internal operations that requires big text to be eroded
@@ -118,7 +118,7 @@ def extract_hazard_label_text(roiBGR,tuner):
 
         #Some basic sanity checking, there is a substring within the text thats the same as
         #any words in the dictionary
-        with open("dictionary.txt") as f:
+        with open("res/dictionary.txt") as f:
             longest = ""
             dictionary = f.read().split('\n')
             for words in dictionary:
@@ -134,6 +134,10 @@ def extract_hazard_label_text(roiBGR,tuner):
                     textTmp = 'NON-FLAMMABLE GAS'
                 elif textTmp == 'ORGANICPEROXIDE':
                     textTmp = 'ORGANIC PEROXIDE'
+                elif textTmp == 'BLASTINGAGENT':
+                    textTmp = 'BLASTING AGENT'
+                elif textTmp == 'FLAMMABLELIQUID':
+                    textTmp = 'FLAMMABLE LIQUID'
 
                 text = text + textTmp + ' '
 
@@ -151,7 +155,7 @@ def extract_hazard_label_text(roiBGR,tuner):
         regions = classRegionsCluster[0]
         classImg = textproc.correct_text_regions(roiBGR,regions,10)
         classImg = transform.translate(classImg,0,-150,classImg.shape)
-        tmp = find_text(classImg,config='--psm 6 -c tessedit_char_whitelist=0123456789.')
+        tmp = find_text(classImg,config='-psm 6 -c tessedit_char_whitelist=0123456789.')
         #simple sanity checky using regex
         matches = re.findall(r"[0-9]|\.(?=[0-9])",tmp)
         classNumber = classNumber + ''.join(matches)

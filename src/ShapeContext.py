@@ -12,7 +12,6 @@ import HLD_Misc as imgmisc
 # improve the speed of calculating the cost between histogram bins
 # https://github.com/creotiv/computer_vision/blob/master/shape_context/shape_context.py
 class ShapeContext(object):
-
     def __init__(self,nBinsR=5,nBinsTheta=12,rInner=0.1250,rOuter=2):
         self.nBinsR        = nBinsR
         self.nBinsTheta    = nBinsTheta
