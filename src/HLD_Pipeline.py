@@ -111,7 +111,6 @@ def extract_hazard_label_text(roiBGR,tuner):
         space = sum([cv2.boundingRect(r)[2] for r in regions])/len(regions)
         #correct the text; space them out and make black text white
         textImg = textproc.correct_text_regions(roiBGR,regions,space)
-        cv2.imwrite("Text.png",textImg)
         tessOut =  find_text(textImg).upper()
         textTmp = ''.join(re.findall(r"[A-Z]|!",tessOut))
         textVis.append(regions)
@@ -209,6 +208,7 @@ def find_symbol_cnt(imgROI):
 
 
 def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display=False):
+    classifies = []
     tuner = HLD_Tuner.Tuner()
     sc    = ShapeContext.ShapeContext()
     #Load binary files containing symbol shape context descriptors
@@ -218,7 +218,7 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
                   ('SKULL & BONES ON BLACK DIAMOND',np.load("res/ShapeDescriptors/ToxicSymbol.npy")),
                   ('OXIDIZER',np.load("res/ShapeDescriptors/OxidizerSymbol.npy")),
                   ('EXPLOSIVE',np.load("res/ShapeDescriptors/ExplosiveSymbol.npy")),
-                  ('CANNISTER',np.load("res/ShapeDescriptors/CannisterSymbol.npy")),
+                  ('GAS CYLINDER',np.load("res/ShapeDescriptors/CannisterSymbol.npy")),
                   ('1.5',np.load("res/ShapeDescriptors/1_5.npy")),
                   ('1.6',np.load("res/ShapeDescriptors/1_6.npy"))
                   ]
@@ -248,11 +248,13 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
             symbol = costs[0][0]
             (label,classNo),textVis,nonRegThresh = extract_hazard_label_text(imgROI,tuner)
             topColor,botColor = detect_color(imgROI,mask=roiMask - (255 - nonRegThresh))
-            print("Top          : %s"%(topColor))
-            print("Bottom       : %s"%(botColor))
-            print("Class Number : %s"%(classNo))
-            print("Label Text   : %s"%(label))
-            print("Symbol       : %s"%(symbol))
+            output = '\n'.join(("Top          : %30ls"%(topColor),
+                                "Bottom       : %30ls"%(botColor),
+                                "Class Number : %30ls"%(classNo),
+                                "Label Text   : %30ls"%(label),
+                                "Symbol       : %30ls"%(symbol)))
+
+            classifies.append(output)
 
             #For displaying
             if display:
@@ -267,7 +269,7 @@ def classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,
         symbol = "No symbol found"
 
 
-    return
+    return classifies
 
 #find the contours of this image
 #The main pipe line
@@ -289,7 +291,10 @@ def run_detection(imgpath,display):
 
     #Go through each label and classify them
     for i, (rectContour,mask) in enumerate(hl_c_m):
-        classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
+        classifies = classify_label(imgBGR,rectContour,mask,roiVisList,textVisList,symbolVisList,display)
+        classifies.sort()
+        for c in classifies:
+            print(c + "\n")
 
     elapsed = time.time() - startTime
     print("Finished in %.3fs"%(elapsed))
@@ -308,8 +313,6 @@ def run_detection(imgpath,display):
         else:
             print("No ROI found")
         plt.show()
-
-
 
 if __name__ == '__main__':
     if(len(sys.argv) < 2):
